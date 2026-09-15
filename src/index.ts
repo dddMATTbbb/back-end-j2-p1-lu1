@@ -49,7 +49,7 @@ fastify.get('/test', async (_request: FastifyRequest, reply: FastifyReply) => {
     }
 });
 
-fastify.post('/login', async (request: FastifyRequest<{ Body: LoginBody }>, reply: FastifyReply) => {
+fastify.post('/loginStudent', async (request: FastifyRequest<{ Body: LoginBody }>, reply: FastifyReply) => {
     const { email, password } = request.body || {};
 
     if (!email || !password) {
@@ -57,7 +57,7 @@ fastify.post('/login', async (request: FastifyRequest<{ Body: LoginBody }>, repl
     }
 
     try {
-        // Tikfout opgelost: geen losse backtick meer voor SELECT
+        //TODO: verander dit naar de nieuwe database scheme
         const query = "SELECT id, email, password_text FROM public.users WHERE LOWER(email) = LOWER($1) LIMIT 1";
         const result = await fastify.pg.query(query, [email]);
 
@@ -67,7 +67,40 @@ fastify.post('/login', async (request: FastifyRequest<{ Body: LoginBody }>, repl
 
         const user = result.rows[0];
 
-        // Let op: hier vergelijk je later het wachtwoord met bcrypt
+        //dit moet hashes controle zijn
+        if (user.password_text !== password) {
+            return reply.status(401).send({ error: 'Ongeldige email of wachtwoord' });
+        }
+
+        return reply.status(200).send({
+            message: "Succesvol ingelogd",
+            user: { id: user.id, email: user.email }
+        });
+    } catch (err) {
+        fastify.log.error(err);
+        return reply.status(500).send({ error: 'Server fout' });
+    }
+});
+
+fastify.post('/loginDocent', async (request: FastifyRequest<{ Body: LoginBody }>, reply: FastifyReply) => {
+    const { email, password } = request.body || {};
+
+    if (!email || !password) {
+        return reply.status(400).send({ error: 'Invalid input' });
+    }
+
+    try {
+        //TODO: verander dit naar de nieuwe database scheme
+        const query = "SELECT id, email, password_text FROM public.users WHERE LOWER(email) = LOWER($1) LIMIT 1";
+        const result = await fastify.pg.query(query, [email]);
+
+        if (result.rowCount === 0) {
+            return reply.status(401).send({ error: 'Ongeldige email of wachtwoord' });
+        }
+
+        const user = result.rows[0];
+
+        //let op dit is veranderd, de database heeft nu alleen hashes
         if (user.password_text !== password) {
             return reply.status(401).send({ error: 'Ongeldige email of wachtwoord' });
         }
