@@ -31,11 +31,6 @@ interface LoginBody {
 }
 
 fastify.get('/', (_request: FastifyRequest, reply: FastifyReply) => {
-    if (process.env.DB_CONNECTION_STRING) {
-        fastify.log.info(process.env.DB_CONNECTION_STRING);
-    } else {
-        fastify.log.error("Database string is leeg!");
-    }
     return reply.status(200).send({
         message: 'Hello'
     });
