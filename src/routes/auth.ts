@@ -1,17 +1,13 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthBody } from '../types/auth';
 
-export async function authRoutes(fastify: FastifyInstance) {
-    async function handleLogin(request: FastifyRequest<{ Body: AuthBody }>, reply: FastifyReply, isStudent:boolean) {
-        const { email, password } = request.body || {};
-        let table:string;
+const bycrypt = require('bcrypt');
 
-        if(isStudent) {
-            table = "public.users_student"
-        }
-        else {
-            table = "public.users_docenten"
-        }
+const saltRounds:number = parseInt(process.env.SALT_ROUNDS ?? '0', 10);
+
+export async function authRoutes(fastify: FastifyInstance) {
+    async function handleLogin(request: FastifyRequest<{ Body: AuthBody }>, reply: FastifyReply) {
+        const { email, password } = request.body || {};
 
 
         if (!email || !password) {
@@ -19,11 +15,11 @@ export async function authRoutes(fastify: FastifyInstance) {
         }
 
         try {
-            const query = "SELECT id, email, password_text " +
-                "FROM $1 " +
-                "WHERE LOWER(email) = LOWER($2) " +
+            const query = "SELECT id, email, password_hash " +
+                "FROM public.users " +
+                "WHERE LOWER(email) = LOWER($1) " +
                 "LIMIT 1";
-            const result = await fastify.pg.query(query, [table], [email]);
+            const result = await fastify.pg.query(query, [email]);
 
             if (result.rowCount === 0) {
                 return reply.status(401).send({ error: 'Ongeldige email of wachtwoord' });
@@ -45,11 +41,25 @@ export async function authRoutes(fastify: FastifyInstance) {
         }
     }
 
-    fastify.post('/loginStudent', (req: FastifyRequest<{ Body: AuthBody }>, reply) =>
-        handleLogin(req, reply, true)
-    );
+    async function handleSignup(request: FastifyRequest<{ Body: AuthBody }>, reply: FastifyReply) {
+        const { email, password, role } = request.body || {};
 
-    fastify.post('/loginDocent', (req: FastifyRequest<{ Body: AuthBody }>, reply) =>
-        handleLogin(req, reply, false)
-    );
+        if (!email || !password) {
+            return reply.status(400).send({ error: 'Invalid input' });
+        }
+
+        const hash:string = bycrypt.hash(password, saltRounds);
+
+        try{
+            const query = "INSERT INTO public.users (email, password_hash, role)" +
+                "VALUES ($1, $2, $3)"
+            const result = await fastify.pg.query(query, [email, hash, role]);
+        } catch (err){
+            fastify.log.error(err);
+            return reply.status(500).send({ error: 'Server fout' });
+        }
+    }
+
+    fastify.post('/login', handleLogin);
+    fastify.post('/signup', handleSignup);
 }

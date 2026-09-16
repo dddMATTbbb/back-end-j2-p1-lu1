@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyInstance } from 'fastify';
 import { dbPlugin } from './plugins/db';
 import { corsPlugin } from './plugins/cors';
 import { rootRoutes } from './routes';
@@ -6,7 +6,19 @@ import { boekenRoutes } from './routes/boeken';
 import { authRoutes } from './routes/auth';
 
 export function buildApp() {
-    const fastify = Fastify({ logger: true });
+
+    const fastify: FastifyInstance = Fastify({
+        logger: {
+            transport: {
+                target: 'pino-pretty',
+                options: {
+                    translateTime: 'HH:MM:ss Z',
+                    ignore: 'pid,hostname',
+                    colorize: true
+                }
+            }
+        }
+    })
 
     // Plugins
     fastify.register(corsPlugin);
