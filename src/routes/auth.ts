@@ -44,7 +44,7 @@ export async function authRoutes(fastify: FastifyInstance) {
     async function handleSignup(request: FastifyRequest<{ Body: AuthBody }>, reply: FastifyReply) {
         const { email, password, role } = request.body || {};
 
-        if (!email || !password) {
+        if (!email || !password || !role) {
             return reply.status(400).send({ error: 'Invalid input' });
         }
 
@@ -53,7 +53,8 @@ export async function authRoutes(fastify: FastifyInstance) {
         try{
             const query = "INSERT INTO public.users (email, password_hash, role)" +
                 "VALUES ($1, $2, $3)"
-            const result = await fastify.pg.query(query, [email, hash, role]);
+            await fastify.pg.query(query, [email, hash, role]);
+            return reply.status(200).send({message: "Succesvol aangemeld"})
         } catch (err){
             fastify.log.error(err);
             return reply.status(500).send({ error: 'Server fout' });
