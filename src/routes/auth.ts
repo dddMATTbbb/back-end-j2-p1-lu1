@@ -3,12 +3,15 @@ import type { AuthBody } from '../types/auth';
 
 const bycrypt = require('bcrypt');
 
-const saltRounds:number = parseInt(process.env.SALT_ROUNDS ?? '0', 10);
+const saltRounds:number = parseInt(process.env.SALT_ROUNDS!);
 
 export async function authRoutes(fastify: FastifyInstance) {
+    if(!saltRounds){
+        fastify.log.error("SALT_ROUNDS environment variable is required")
+    }
+
     async function handleLogin(request: FastifyRequest<{ Body: AuthBody }>, reply: FastifyReply) {
         const { email, password } = request.body || {};
-
 
         if (!email || !password) {
             return reply.status(400).send({ error: 'Invalid input' });
@@ -27,13 +30,22 @@ export async function authRoutes(fastify: FastifyInstance) {
 
             const user = result.rows[0];
 
-            if (user.password_text !== password) {
+            const isPasswordCorrect:boolean = bycrypt.password(password, user.password_hash);
+
+            if (!isPasswordCorrect) {
+                fastify.log.info("Wrong password");
                 return reply.status(401).send({ error: 'Ongeldige email of wachtwoord' });
             }
 
+            const token = fastify.jwt.sign({
+                id: user.id,
+                email: user.email,
+            },{
+                expiresIn: '1h',
+            })
+
             return reply.status(200).send({
-                message: "Succesvol ingelogd",
-                user: { id: user.id, email: user.email }
+                token,
             });
         } catch (err) {
             fastify.log.error(err);
