@@ -4,6 +4,7 @@ import { corsPlugin } from './plugins/cors';
 import { rootRoutes } from './routes';
 import { boekenRoutes } from './routes/boeken';
 import { authRoutes } from './routes/auth';
+import {jwtPlugin} from "./plugins/jwt.ts";
 
 export function buildApp() {
 
@@ -23,6 +24,7 @@ export function buildApp() {
     // Plugins
     fastify.register(corsPlugin);
     fastify.register(dbPlugin);
+    fastify.register(jwtPlugin);
 
     // Routes
     fastify.register(rootRoutes);
