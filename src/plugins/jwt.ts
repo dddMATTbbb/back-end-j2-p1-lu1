@@ -13,6 +13,13 @@ async function jwtPluginImpl(fastify: FastifyInstance) {
         secret,
         sign: {
             expiresIn: jwtExpiresIn,
+        },
+        messages:{
+            noAuthorizationInCookieMessage: "Geen autorisatie-cookie gevonden",
+        },
+        cookie: {
+            cookieName: 'token',
+            signed: false
         }
     });
 

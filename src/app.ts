@@ -5,6 +5,7 @@ import { rootRoutes } from './routes';
 import { boekenRoutes } from './routes/boeken';
 import { authRoutes } from './routes/auth';
 import {jwtPlugin} from "./plugins/jwt.ts";
+import {cookiePlugin} from "./plugins/cookie";
 
 export function buildApp() {
 
@@ -25,6 +26,7 @@ export function buildApp() {
     fastify.register(corsPlugin);
     fastify.register(dbPlugin);
     fastify.register(jwtPlugin);
+    fastify.register(cookiePlugin);
 
     // Routes
     fastify.register(rootRoutes);

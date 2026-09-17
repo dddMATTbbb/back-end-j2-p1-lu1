@@ -30,7 +30,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
             const user = result.rows[0];
 
-            const isPasswordCorrect:boolean = bycrypt.password(password, user.password_hash);
+            const isPasswordCorrect:boolean = await bycrypt.compare(password, user.password_hash);
 
             if (!isPasswordCorrect) {
                 fastify.log.info("Wrong password");
@@ -44,9 +44,13 @@ export async function authRoutes(fastify: FastifyInstance) {
                 expiresIn: '1h',
             })
 
-            return reply.status(200).send({
-                token,
-            });
+            await reply.setCookie("token", token, {
+                path: "/",
+                httpOnly: true,
+                sameSite: "lax",
+                maxAge: 7200
+            }).send({ message: "Authentication successful", user: {id: user.id, email: user.email} });
+
         } catch (err) {
             fastify.log.error(err);
             return reply.status(500).send({ error: 'Server fout' });
@@ -60,7 +64,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             return reply.status(400).send({ error: 'Invalid input' });
         }
 
-        const hash:string = bycrypt.hash(password, saltRounds);
+        const hash:string = await bycrypt.hash(password, saltRounds);
 
         try{
             const query = "INSERT INTO public.users (email, password_hash, role)" +
@@ -73,6 +77,11 @@ export async function authRoutes(fastify: FastifyInstance) {
         }
     }
 
+    async function handleLogout(request: FastifyRequest, reply: FastifyReply) {
+        await reply.clearCookie('token', { path: '/' }).send({ message: 'Uitgelogd' });
+    }
+
     fastify.post('/login', handleLogin);
     fastify.post('/signup', handleSignup);
+    fastify.post('/logout', handleLogout);
 }
