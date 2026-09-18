@@ -41,7 +41,7 @@ export async function authRoutes(fastify: FastifyInstance) {
                 id: user.id,
                 email: user.email,
             },{
-                expiresIn: '1h',
+                expiresIn: '15m',
             })
 
             await reply.setCookie("token", token, {
