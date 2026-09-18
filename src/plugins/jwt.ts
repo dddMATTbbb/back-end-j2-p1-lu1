@@ -22,14 +22,6 @@ async function jwtPluginImpl(fastify: FastifyInstance) {
             signed: false
         }
     });
-
-    fastify.decorate("authenticate", async function (req:any, res:any) {
-        try{
-            await req.jwtVerify();
-        } catch(err){
-            res.status(401).send({ error: 'Niet geautoriseerd' });
-        }
-    })
 }
 
 export const jwtPlugin = fp(jwtPluginImpl);
