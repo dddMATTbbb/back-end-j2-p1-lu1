@@ -1,5 +1,6 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import  { type FastifyInstance, type FastifyRequest, type FastifyReply } from 'fastify';
 import type { AuthBody } from '../types/auth';
+import * as fastify from "fastify";
 
 const bycrypt = require('bcrypt');
 
@@ -81,7 +82,12 @@ export async function authRoutes(fastify: FastifyInstance) {
         await reply.clearCookie('token', { path: '/' }).send({ message: 'Uitgelogd' });
     }
 
+    async function checkAuth(req: FastifyRequest, reply: FastifyReply) {
+
+    }
+
     fastify.post('/login', handleLogin);
     fastify.post('/signup', handleSignup);
     fastify.post('/logout', handleLogout);
+    fastify.get('/check-auth', {onRequest: [fastify.authenticate]} ,checkAuth);
 }
