@@ -1,6 +1,5 @@
-import  { type FastifyInstance, type FastifyRequest, type FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthBody } from '../types/auth';
-import * as fastify from "fastify";
 
 const bycrypt = require('bcrypt');
 
@@ -12,13 +11,15 @@ export async function authRoutes(fastify: FastifyInstance) {
     }
 
     async function handleLogin(request: FastifyRequest<{ Body: AuthBody }>, reply: FastifyReply) {
-        const { email, password } = request.body || {};
+        const { email, password, role } = request.body || {};
 
-        if (!email || !password) {
+        if (!email || !password || !role) {
             return reply.status(400).send({ error: 'Invalid input' });
         }
+        //TODO: check if the email and role match
 
         try {
+            //query building
             const query = "SELECT id, email, password_hash " +
                 "FROM public.users " +
                 "WHERE LOWER(email) = LOWER($1) " +
@@ -34,7 +35,6 @@ export async function authRoutes(fastify: FastifyInstance) {
             const isPasswordCorrect:boolean = await bycrypt.compare(password, user.password_hash);
 
             if (!isPasswordCorrect) {
-                fastify.log.info("Wrong password");
                 return reply.status(401).send({ error: 'Ongeldige email of wachtwoord' });
             }
 
@@ -49,8 +49,8 @@ export async function authRoutes(fastify: FastifyInstance) {
                 path: "/",
                 httpOnly: true,
                 sameSite: "lax",
-                maxAge: 7200
-            }).send({ message: "Authentication successful", user: {id: user.id, email: user.email} });
+                maxAge: 900
+            }).send({ message: "Authentication successful" });
 
         } catch (err) {
             fastify.log.error(err);
@@ -82,12 +82,9 @@ export async function authRoutes(fastify: FastifyInstance) {
         await reply.clearCookie('token', { path: '/' }).send({ message: 'Uitgelogd' });
     }
 
-    async function checkAuth(req: FastifyRequest, reply: FastifyReply) {
-
-    }
+    //TODO: check auth maken en de nodige endpoints beveiligen
 
     fastify.post('/login', handleLogin);
     fastify.post('/signup', handleSignup);
     fastify.post('/logout', handleLogout);
-    fastify.get('/check-auth', {onRequest: [fastify.authenticate]} ,checkAuth);
 }
