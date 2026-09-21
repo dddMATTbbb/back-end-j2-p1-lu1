@@ -1,11 +1,12 @@
 import Fastify, { type FastifyInstance } from 'fastify';
-import { dbPlugin } from './plugins/db';
+import { postgressDBPlugin } from './plugins/postgressDB.ts';
 import { corsPlugin } from './plugins/cors';
 import { rootRoutes } from './routes';
 import { boekenRoutes } from './routes/boeken';
 import { authRoutes } from './routes/auth';
 import {jwtPlugin} from "./plugins/jwt.ts";
 import {cookiePlugin} from "./plugins/cookie";
+import {mongoDBPlugin} from "./plugins/mongoDB.ts";
 
 export function buildApp() {
 
@@ -24,7 +25,8 @@ export function buildApp() {
 
     // Plugins
     fastify.register(corsPlugin);
-    fastify.register(dbPlugin);
+    fastify.register(postgressDBPlugin);
+    fastify.register(mongoDBPlugin);
     fastify.register(jwtPlugin);
     fastify.register(cookiePlugin);
 
