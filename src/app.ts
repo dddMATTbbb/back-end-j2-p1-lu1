@@ -27,8 +27,8 @@ export function buildApp() {
     fastify.register(corsPlugin);
     fastify.register(postgressDBPlugin);
     fastify.register(mongoDBPlugin);
-    fastify.register(jwtPlugin);
     fastify.register(cookiePlugin);
+    fastify.register(jwtPlugin);
 
     // Routes
     fastify.register(rootRoutes);

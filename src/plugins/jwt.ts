@@ -10,13 +10,7 @@ if (!secret || !jwtExpiresIn) {
 
 async function jwtPluginImpl(fastify: FastifyInstance) {
     fastify.register(jwt, {
-        secret,
-        sign: {
-            expiresIn: jwtExpiresIn,
-        },
-        messages:{
-            noAuthorizationInCookieMessage: "Geen autorisatie-cookie gevonden",
-        },
+        secret: secret,
         cookie: {
             cookieName: 'token',
             signed: false
