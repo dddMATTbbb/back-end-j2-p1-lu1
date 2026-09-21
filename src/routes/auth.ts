@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthBody } from '../types/auth';
+import {jwtPlugin} from "../plugins/jwt.ts";
 
 const bycrypt = require('bcrypt');
 
@@ -71,7 +72,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             const query = "INSERT INTO public.users (email, password_hash, role)" +
                 "VALUES ($1, $2, $3)"
             await fastify.pg.query(query, [email, hash, role]);
-            return reply.status(200).send({message: "Succesvol aangemeld"})
+            return reply.status(201).send({message: "Succesvol aangemeld"})
         } catch (err){
             fastify.log.error(err);
             return reply.status(500).send({ error: 'Server fout' });
@@ -82,9 +83,20 @@ export async function authRoutes(fastify: FastifyInstance) {
         await reply.clearCookie('token', { path: '/' }).send({ message: 'Uitgelogd' });
     }
 
-    //TODO: check auth maken en de nodige endpoints beveiligen
+    async function handleCheckLogin(req: FastifyRequest, reply: FastifyReply) {
+        try{
+            await req.jwtVerify()
+        } catch (err){
+            return reply.status(401).send({ message: 'Unauthorized' });
+        }
+
+        return reply.status(200).send({ message: "Logged in successful" });
+    }
+
+    //TODO: de nodige endpoints beveiligen
 
     fastify.post('/login', handleLogin);
     fastify.post('/signup', handleSignup);
     fastify.post('/logout', handleLogout);
+    fastify.get('/check-auth', handleCheckLogin);
 }

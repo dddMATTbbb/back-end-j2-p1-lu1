@@ -1,4 +1,4 @@
-import { type FastifyInstance } from 'fastify';
+import { type FastifyInstance, type FastifyRequest, type FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import jwt from '@fastify/jwt';
 
@@ -20,6 +20,14 @@ async function jwtPluginImpl(fastify: FastifyInstance) {
         cookie: {
             cookieName: 'token',
             signed: false
+        }
+    });
+
+    fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+            await request.jwtVerify();
+        } catch (err) {
+            reply.send(err);
         }
     });
 }
