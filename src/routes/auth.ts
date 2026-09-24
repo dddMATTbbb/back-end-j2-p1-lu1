@@ -1,6 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthBody } from '../types/auth';
-import {jwtPlugin} from "../plugins/jwt.ts";
 
 const bycrypt = require('bcrypt');
 
