@@ -47,7 +47,7 @@ export async function leesProfielRoutes(fastify: FastifyInstance) {
         { preHandler: [fastify.authenticate] },
         handleCreateLeesProfiel
     );
-    fastify.get('checkLeesProfiel',
+    fastify.get('/checkLeesProfiel',
         {preHandler: [fastify.authenticate]},
         handleCheckLeesProfiel);
 }
