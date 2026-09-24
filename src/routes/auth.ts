@@ -16,7 +16,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         if (!email || !password || !role) {
             return reply.status(400).send({ error: 'Invalid input' });
         }
-        //TODO: check if the email and role match
+        //TODO: check if role match
 
         try {
             //query building
@@ -91,8 +91,6 @@ export async function authRoutes(fastify: FastifyInstance) {
 
         return reply.status(200).send({ message: "Logged in successful" });
     }
-
-    //TODO: de nodige endpoints beveiligen
 
     fastify.post('/login', handleLogin);
     fastify.post('/signup', handleSignup);
