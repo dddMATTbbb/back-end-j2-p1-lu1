@@ -1,0 +1,69 @@
+// use prisma-8
+// Contract inferred from the live database schema. Edit as needed, then run `prisma contract emit`.
+
+model Users {
+  id                                        Uuid                   @id(map: "users_pkey") @default(dbgenerated("gen_random_uuid()"))
+  email                                     String                 @unique(map: "users_email_key") @VarChar(255)
+  passwordHash                              String                 @map("password_hash") @VarChar(255)
+  role                                      String                 @VarChar(50)
+  createdAt                                 Timestamptz            @default(now()) @map("created_at")
+  leesLijst                                 LeesLijst?
+  leesProfiels                              LeesProfiel[]
+  refreshTokens                             RefreshTokens[]
+  studentenLijstDocents                     StudentenLijstDocent[] @relation(name: "studenten_lijst_docent_docent_id_fkey")
+  studentenLijstDocentsStudentenLijstDocent StudentenLijstDocent[] @relation(name: "studenten_lijst_docent_student_id_fkey")
+
+  @@check(expression: "((role)::text = ANY ((ARRAY['docent'::character varying, 'student'::character varying])::text[]))", map: "users_role_check")
+  @@map("users")
+}
+
+model LeesLijst {
+  id        Uuid        @id(map: "lees_lijst_pkey") @default(dbgenerated("gen_random_uuid()"))
+  studentId Uuid        @unique(map: "lees_lijst_student_id_key") @map("student_id")
+  boekId    Int         @map("boek_id")
+  updatedAt Timestamptz @default(now()) @map("updated_at")
+  student   Users       @relation(fields: [studentId], references: [id], onDelete: Cascade, map: "lees_lijst_student_id_fkey")
+
+  @@unique([studentId, boekId], map: "unique_student_boek")
+  @@index([studentId], map: "idx_lees_lijst_student")
+  @@map("lees_lijst")
+}
+
+model LeesProfiel {
+  id         Uuid        @id(map: "lees_profiel_pkey") @default(dbgenerated("gen_random_uuid()"))
+  studentId  Uuid        @map("student_id")
+  leeftijd   Int
+  gender     String
+  leesniveau String
+  genre      String
+  updatedAt  Timestamptz @default(now()) @map("updated_at")
+  student    Users       @relation(fields: [studentId], references: [id], onDelete: Cascade, map: "lees_profiel_student_id_fkey")
+
+  @@index([studentId], map: "idx_lees_profiel_student")
+  @@check(expression: "(gender = ANY (ARRAY['man'::text, 'vrouw'::text, 'non-binair'::text, 'anders'::text]))", map: "lees_profiel_gender_check")
+  @@check(expression: "(leesniveau = ANY (ARRAY['2F'::text, '3F'::text]))", map: "lees_profiel_leesniveau_check")
+  @@map("lees_profiel")
+}
+
+model RefreshTokens {
+  id        Uuid         @id(map: "refresh_tokens_pkey") @default(dbgenerated("gen_random_uuid()"))
+  userId    Uuid         @map("user_id")
+  tokenHash String       @unique(map: "refresh_tokens_token_hash_key") @map("token_hash") @VarChar(255)
+  expiresAt Timestamptz  @map("expires_at")
+  revoked   Boolean      @default(false)
+  createdAt Timestamptz  @default(now()) @map("created_at")
+  user      Users        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "refresh_tokens_user_id_fkey")
+
+  @@index([userId], map: "idx_refresh_tokens_user")
+  @@map("refresh_tokens")
+}
+
+model StudentenLijstDocent {
+  docentId  Uuid  @map("docent_id")
+  studentId Uuid  @map("student_id")
+  docent    Users @relation(name: "studenten_lijst_docent_docent_id_fkey", fields: [docentId], references: [id], onDelete: Cascade, map: "studenten_lijst_docent_docent_id_fkey", index: false)
+  student   Users @relation(name: "studenten_lijst_docent_student_id_fkey", fields: [studentId], references: [id], onDelete: Cascade, map: "studenten_lijst_docent_student_id_fkey", index: false)
+
+  @@id([docentId, studentId], map: "studenten_lijst_docent_pkey")
+  @@map("studenten_lijst_docent")
+}
