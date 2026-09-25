@@ -1,5 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthBody } from '../types/auth';
+import {db} from "../prisma/db"
+import type {Varchar} from "@prisma/orm-postgres/target/codec-types";
 
 const bycrypt = require('bcrypt');
 
@@ -16,34 +18,28 @@ export async function authRoutes(fastify: FastifyInstance) {
         if (!email || !password || !role) {
             return reply.status(400).send({ error: 'Invalid input' });
         }
-        //TODO: check if role match
 
         try {
-            //query building
-            const query = "SELECT id, email, password_hash " +
-                "FROM public.users " +
-                "WHERE LOWER(email) = LOWER($1) " +
-                "LIMIT 1";
-            const result = await fastify.pg.query(query, [email]);
+            const result = await db.orm.public.Users.where({ email: email }).first();
 
-            if (result.rowCount === 0) {
+            if (!result) {
                 return reply.status(401).send({ error: 'Ongeldige email of wachtwoord' });
             }
 
-            const user = result.rows[0];
+            if (result.role !== role) {
+                return reply.status(401).send({ error: 'Ongeldige email of wachtwoord' });
+            }
 
-            const isPasswordCorrect:boolean = await bycrypt.compare(password, user.password_hash);
+            const isPasswordCorrect: boolean = await bycrypt.compare(password, result.passwordHash);
 
             if (!isPasswordCorrect) {
                 return reply.status(401).send({ error: 'Ongeldige email of wachtwoord' });
             }
 
-            const token = fastify.jwt.sign({
-                id: user.id,
-                email: user.email,
-            },{
-                expiresIn: '15m',
-            })
+            const token = request.server.jwt.sign(
+                { id: result.id, email: result.email },
+                { expiresIn: '15m' }
+            );
 
             await reply.setCookie("token", token, {
                 path: "/",
@@ -53,7 +49,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             }).send({ message: "Authentication successful" });
 
         } catch (err) {
-            fastify.log.error(err);
+            request.server.log.error(err);
             return reply.status(500).send({ error: 'Server fout' });
         }
     }
@@ -65,12 +61,14 @@ export async function authRoutes(fastify: FastifyInstance) {
             return reply.status(400).send({ error: 'Invalid input' });
         }
 
-        const hash:string = await bycrypt.hash(password, saltRounds);
+        const hash: Varchar<255> = await bycrypt.hash(password, saltRounds);
 
         try{
-            const query = "INSERT INTO public.users (email, password_hash, role)" +
-                "VALUES ($1, $2, $3)"
-            await fastify.pg.query(query, [email, hash, role]);
+            const user = await db.orm.public.Users.create({
+                email: email,
+                passwordHash: hash,
+                role: role,
+            })
             return reply.status(201).send({message: "Succesvol aangemeld"})
         } catch (err){
             fastify.log.error(err);

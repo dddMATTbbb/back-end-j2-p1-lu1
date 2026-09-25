@@ -2,10 +2,10 @@
 // Contract inferred from the live database schema. Edit as needed, then run `prisma contract emit`.
 
 model Users {
-  id                                        Uuid                   @id(map: "users_pkey") @default(dbgenerated("gen_random_uuid()"))
-  email                                     String                 @unique(map: "users_email_key") @VarChar(255)
-  passwordHash                              String                 @map("password_hash") @VarChar(255)
-  role                                      String                 @VarChar(50)
+  id                                        Uuid                   @id(map: "users_pkey") @default(sql`gen_random_uuid()`)
+  email                                     VarChar(255)           @unique(map: "users_email_key")
+  passwordHash                              VarChar(255)           @map("password_hash")
+  role                                      VarChar(50)
   createdAt                                 Timestamptz            @default(now()) @map("created_at")
   leesLijst                                 LeesLijst?
   leesProfiels                              LeesProfiel[]
@@ -18,7 +18,7 @@ model Users {
 }
 
 model LeesLijst {
-  id        Uuid        @id(map: "lees_lijst_pkey") @default(dbgenerated("gen_random_uuid()"))
+  id                    Uuid @id(map: "users_pkey")               @default(sql`gen_random_uuid()`)
   studentId Uuid        @unique(map: "lees_lijst_student_id_key") @map("student_id")
   boekId    Int         @map("boek_id")
   updatedAt Timestamptz @default(now()) @map("updated_at")
@@ -30,7 +30,7 @@ model LeesLijst {
 }
 
 model LeesProfiel {
-  id         Uuid        @id(map: "lees_profiel_pkey") @default(dbgenerated("gen_random_uuid()"))
+  id         Uuid        @id(map: "users_pkey") @default(sql`gen_random_uuid()`)
   studentId  Uuid        @map("student_id")
   leeftijd   Int
   gender     String
@@ -46,9 +46,9 @@ model LeesProfiel {
 }
 
 model RefreshTokens {
-  id        Uuid         @id(map: "refresh_tokens_pkey") @default(dbgenerated("gen_random_uuid()"))
+  id        Uuid         @id(map: "users_pkey") @default(sql`gen_random_uuid()`)
   userId    Uuid         @map("user_id")
-  tokenHash String       @unique(map: "refresh_tokens_token_hash_key") @map("token_hash") @VarChar(255)
+  tokenHash VarChar(255) @unique(map: "refresh_tokens_token_hash_key") @map("token_hash")
   expiresAt Timestamptz  @map("expires_at")
   revoked   Boolean      @default(false)
   createdAt Timestamptz  @default(now()) @map("created_at")
