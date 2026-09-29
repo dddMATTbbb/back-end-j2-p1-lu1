@@ -61,6 +61,12 @@ export async function authRoutes(fastify: FastifyInstance) {
             return reply.status(400).send({ error: 'Invalid input' });
         }
 
+        const checkUser = await db.orm.public.Users.where({ email: email }).first();
+
+        if(checkUser){
+            return reply.status(400).send({ error: 'User already exists' });
+        }
+
         const hash: Varchar<255> = await bycrypt.hash(password, saltRounds);
 
         try{
