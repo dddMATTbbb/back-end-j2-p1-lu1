@@ -35,7 +35,7 @@ export async function leesProfielRoutes(fastify: FastifyInstance) {
         try{
             const result = await db.orm.public.LeesProfiel.where({studentId: userId}).first();
             if (result) {
-                return reply.status(200).send({ message: "Leesprofiel already exist" });
+                return reply.status(200).send({ message: "Leesprofiel already exist", data: result});
             } else{
                 return reply.status(200).send({ message: 'Leesprofiel does not exist' });
             }
