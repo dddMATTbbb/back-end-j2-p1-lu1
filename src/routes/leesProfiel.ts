@@ -1,7 +1,6 @@
 import type {FastifyInstance, FastifyRequest, FastifyReply} from "fastify";
 import type {LeesProfiel} from "../types/leesprofiel.ts";
 import {db} from "../prisma/db.ts"
-import type {UUID} from "node:crypto";
 
 export async function leesProfielRoutes(fastify: FastifyInstance) {
     async function handleCreateLeesProfiel(request: FastifyRequest<{ Body: LeesProfiel }>, reply: FastifyReply) {
@@ -35,7 +34,7 @@ export async function leesProfielRoutes(fastify: FastifyInstance) {
         try{
             const result = await db.orm.public.LeesProfiel.where({studentId: userId}).first();
             if (result) {
-                return reply.status(200).send({ message: "Leesprofiel already exist", data: result});
+                return reply.status(200).send({data: result});
             } else{
                 return reply.status(200).send({ message: 'Leesprofiel does not exist' });
             }

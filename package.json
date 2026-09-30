@@ -7,6 +7,7 @@
     "@prisma/cli-engine": "0.6.1",
     "@types/bun": "latest",
     "@types/node": "^26.5.1",
+    "oxlint": "^1.86.0",
     "prisma": "^8.0.0-rc.17"
   },
   "peerDependencies": {
@@ -27,6 +28,8 @@
     "tsx": "^4.23.15"
   },
   "scripts": {
-    "contract:emit": "prisma contract emit"
+    "contract:emit": "prisma contract emit",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
   }
 }

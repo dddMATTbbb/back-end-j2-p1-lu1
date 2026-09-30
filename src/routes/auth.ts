@@ -70,7 +70,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         const hash: Varchar<255> = await bycrypt.hash(password, saltRounds);
 
         try{
-            const user = await db.orm.public.Users.create({
+            await db.orm.public.Users.create({
                 email: email,
                 passwordHash: hash,
                 role: role,
@@ -90,6 +90,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         try{
             await req.jwtVerify()
         } catch (err){
+            fastify.log.error(err);
             return reply.status(401).send({ message: 'Unauthorized' });
         }
 
