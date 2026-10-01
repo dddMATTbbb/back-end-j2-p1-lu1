@@ -7,7 +7,7 @@ import { authRoutes } from './routes/auth';
 import {leesProfielRoutes} from "./routes/leesProfiel.ts";
 import {jwtPlugin} from "./plugins/jwt.ts";
 import {cookiePlugin} from "./plugins/cookie";
-//import {mongoDBPlugin} from "./plugins/mongoDB.ts";
+import {mongoDBPlugin} from "./plugins/mongoDB.ts";
 
 export function buildApp() {
 
@@ -27,7 +27,7 @@ export function buildApp() {
     // Plugins
     fastify.register(corsPlugin);
     fastify.register(postgressDBPlugin);
-    //fastify.register(mongoDBPlugin);
+    fastify.register(mongoDBPlugin);
     fastify.register(cookiePlugin);
     fastify.register(jwtPlugin);
 
