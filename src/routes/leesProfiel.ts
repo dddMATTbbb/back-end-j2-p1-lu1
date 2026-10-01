@@ -45,6 +45,24 @@ export async function leesProfielRoutes(fastify: FastifyInstance) {
         }
     }
 
+    async function handleUpdateLeesProfiel(request: FastifyRequest<{Body: LeesProfiel}>, reply: FastifyReply) {
+        const userId = request.user.id;
+        const { leeftijd, gender, leesniveau, genre } = request.body;
+
+        try{
+            const result = await db.orm.public.LeesProfiel.where({studentId: userId}).update({
+                leeftijd: leeftijd,
+                gender: gender,
+                leesniveau: leesniveau,
+                genre: genre,
+            })
+            return reply.status(200).send({result});
+        }catch(err) {
+            fastify.log.error(err);
+            return reply.status(500).send({ error: 'Server fout' });
+        }
+    }
+
     fastify.post<{ Body: LeesProfiel }>(
         '/leesProfiel',
         { preHandler: [fastify.authenticate] },
@@ -52,5 +70,11 @@ export async function leesProfielRoutes(fastify: FastifyInstance) {
     );
     fastify.get('/leesProfiel',
         {preHandler: [fastify.authenticate]},
-        handleCheckLeesProfiel);
+        handleCheckLeesProfiel
+    );
+    fastify.put<{Body: LeesProfiel}>(
+        '/leesProfiel',
+        { preHandler: [fastify.authenticate] },
+        handleUpdateLeesProfiel
+    )
 }

@@ -41,7 +41,7 @@ model LeesProfiel {
 
   @@index([studentId], map: "idx_lees_profiel_student")
   @@check(expression: "(gender = ANY (ARRAY['man'::text, 'vrouw'::text, 'non-binair'::text, 'anders'::text]))", map: "lees_profiel_gender_check")
-  @@check(expression: "(leesniveau = ANY (ARRAY['2F'::text, '3F'::text]))", map: "lees_profiel_leesniveau_check")
+  @@check(expression: "(leesniveau = ANY (ARRAY['2F'::text, '3F'::text, '2F/3F'::text]))", map: "lees_profiel_leesniveau_check")
   @@map("lees_profiel")
 }
 
