@@ -8,7 +8,7 @@ model Users {
   role                                      VarChar(50)
   createdAt                                 Timestamptz            @default(now()) @map("created_at")
   leesLijst                                 LeesLijst?
-  leesProfiels                              LeesProfiel[]
+  leesProfiel                               LeesProfiel?
   refreshTokens                             RefreshTokens[]
   studentenLijstDocents                     StudentenLijstDocent[] @relation(name: "studenten_lijst_docent_docent_id_fkey")
   studentenLijstDocentsStudentenLijstDocent StudentenLijstDocent[] @relation(name: "studenten_lijst_docent_student_id_fkey")
@@ -18,9 +18,10 @@ model Users {
 }
 
 model LeesLijst {
-  id                    Uuid @id(map: "users_pkey")               @default(sql`gen_random_uuid()`)
+  id        Uuid        @id(map: "lees_lijst_pkey") @default(sql`gen_random_uuid()`)
   studentId Uuid        @unique(map: "lees_lijst_student_id_key") @map("student_id")
-  boekId    Int         @map("boek_id")
+  boekId    String      @map("boek_id")
+  isRead    Boolean?    @default(false) @map("is_read")
   updatedAt Timestamptz @default(now()) @map("updated_at")
   student   Users       @relation(fields: [studentId], references: [id], onDelete: Cascade, map: "lees_lijst_student_id_fkey")
 
@@ -30,8 +31,8 @@ model LeesLijst {
 }
 
 model LeesProfiel {
-  id         Uuid        @id(map: "users_pkey") @default(sql`gen_random_uuid()`)
-  studentId  Uuid        @map("student_id")
+  id         Uuid        @id(map: "lees_profiel_pkey") @default(sql`gen_random_uuid()`)
+  studentId  Uuid        @unique(map: "lees_profiel_student_id_key") @map("student_id")
   leeftijd   Int
   gender     String
   leesniveau String
@@ -41,12 +42,12 @@ model LeesProfiel {
 
   @@index([studentId], map: "idx_lees_profiel_student")
   @@check(expression: "(gender = ANY (ARRAY['man'::text, 'vrouw'::text, 'non-binair'::text, 'anders'::text]))", map: "lees_profiel_gender_check")
-  @@check(expression: "(leesniveau = ANY (ARRAY['2F'::text, '3F'::text, '2F/3F'::text]))", map: "lees_profiel_leesniveau_check")
+  @@check(expression: "(leesniveau = ANY (ARRAY['2F'::text, '3F'::text, '2/3F'::text]))", map: "lees_profiel_leesniveau_check")
   @@map("lees_profiel")
 }
 
 model RefreshTokens {
-  id        Uuid         @id(map: "users_pkey") @default(sql`gen_random_uuid()`)
+  id        Uuid         @id(map: "refresh_tokens_pkey") @default(sql`gen_random_uuid()`)
   userId    Uuid         @map("user_id")
   tokenHash VarChar(255) @unique(map: "refresh_tokens_token_hash_key") @map("token_hash")
   expiresAt Timestamptz  @map("expires_at")
