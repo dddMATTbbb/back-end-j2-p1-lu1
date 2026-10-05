@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'9d3885a138753e7a0d848beaca7a1359426443103065354887140504184c5afe'>;
+  StorageHashBase<'dcc730a7c8d5062c5851a8a94d4dbe488fbeba3cf6c1d7a785a741e49d75f6e7'>;
 export type ExecutionHash = ExecutionHashBase<string>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
@@ -250,8 +250,9 @@ type DefaultLiteralValue<CodecId extends string, Encoded> = CodecId extends keyo
 export type FieldOutputTypes = {
   readonly public: {
     readonly LeesLijst: {
-      readonly boekId: CodecTypes['pg/int4@1']['output'];
+      readonly boekId: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/uuid@1']['output'];
+      readonly isRead: CodecTypes['pg/bool@1']['output'] | null;
       readonly studentId: CodecTypes['pg/uuid@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
@@ -288,8 +289,9 @@ export type FieldOutputTypes = {
 export type FieldInputTypes = {
   readonly public: {
     readonly LeesLijst: {
-      readonly boekId: CodecTypes['pg/int4@1']['input'];
+      readonly boekId: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/uuid@1']['input'];
+      readonly isRead: CodecTypes['pg/bool@1']['input'] | null;
       readonly studentId: CodecTypes['pg/uuid@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
@@ -326,8 +328,9 @@ export type FieldInputTypes = {
 export type StorageColumnTypes = {
   readonly public: {
     readonly lees_lijst: {
-      readonly boek_id: CodecTypes['pg/int4@1']['output'];
+      readonly boek_id: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/uuid@1']['output'];
+      readonly is_read: CodecTypes['pg/bool@1']['output'] | null;
       readonly student_id: CodecTypes['pg/uuid@1']['output'];
       readonly updated_at: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
@@ -364,8 +367,9 @@ export type StorageColumnTypes = {
 export type StorageColumnInputTypes = {
   readonly public: {
     readonly lees_lijst: {
-      readonly boek_id: CodecTypes['pg/int4@1']['input'];
+      readonly boek_id: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/uuid@1']['input'];
+      readonly is_read: CodecTypes['pg/bool@1']['input'] | null;
       readonly student_id: CodecTypes['pg/uuid@1']['input'];
       readonly updated_at: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
@@ -402,8 +406,9 @@ export type StorageColumnInputTypes = {
 
 export namespace Models {
   export type public_LeesLijst = {
-    boekId: CodecTypes['pg/int4@1']['output'];
+    boekId: CodecTypes['pg/text@1']['output'];
     id: CodecTypes['pg/uuid@1']['output'];
+    isRead: CodecTypes['pg/bool@1']['output'] | null;
     studentId: CodecTypes['pg/uuid@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     student: public_Users;
@@ -444,13 +449,13 @@ export namespace Models {
     passwordHash: Varchar<255>;
     role: Varchar<50>;
     leesLijst: public_LeesLijst | null;
-    leesProfiels: public_LeesProfiel[];
+    leesProfiel: public_LeesProfiel | null;
     refreshTokens: public_RefreshTokens[];
     studentenLijstDocents: public_StudentenLijstDocent[];
     studentenLijstDocentsStudentenLijstDocent: public_StudentenLijstDocent[];
     readonly [RelationKeys]?:
       | 'leesLijst'
-      | 'leesProfiels'
+      | 'leesProfiel'
       | 'refreshTokens'
       | 'studentenLijstDocents'
       | 'studentenLijstDocentsStudentenLijstDocent';
@@ -488,8 +493,8 @@ type ContractBase = Omit<
             readonly lees_lijst: {
               columns: {
                 readonly boek_id: {
-                  readonly nativeType: 'int4';
-                  readonly codecId: 'pg/int4@1';
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
                   readonly nullable: false;
                 };
                 readonly id: {
@@ -499,6 +504,15 @@ type ContractBase = Omit<
                   readonly default: {
                     readonly kind: 'function';
                     readonly expression: 'gen_random_uuid()';
+                  };
+                };
+                readonly is_read: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: true;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
                   };
                 };
                 readonly student_id: {
@@ -513,7 +527,7 @@ type ContractBase = Omit<
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                 };
               };
-              primaryKey: { readonly columns: readonly ['id']; readonly name: 'users_pkey' };
+              primaryKey: { readonly columns: readonly ['id']; readonly name: 'lees_lijst_pkey' };
               uniques: readonly [
                 {
                   readonly columns: readonly ['student_id'];
@@ -590,8 +604,13 @@ type ContractBase = Omit<
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                 };
               };
-              primaryKey: { readonly columns: readonly ['id']; readonly name: 'users_pkey' };
-              uniques: readonly [];
+              primaryKey: { readonly columns: readonly ['id']; readonly name: 'lees_profiel_pkey' };
+              uniques: readonly [
+                {
+                  readonly columns: readonly ['student_id'];
+                  readonly name: 'lees_profiel_student_id_key';
+                },
+              ];
               indexes: readonly [
                 {
                   readonly name: 'idx_lees_profiel_student';
@@ -658,7 +677,10 @@ type ContractBase = Omit<
                   readonly nullable: false;
                 };
               };
-              primaryKey: { readonly columns: readonly ['id']; readonly name: 'users_pkey' };
+              primaryKey: {
+                readonly columns: readonly ['id'];
+                readonly name: 'refresh_tokens_pkey';
+              };
               uniques: readonly [
                 {
                   readonly columns: readonly ['token_hash'];
@@ -816,11 +838,15 @@ type ContractBase = Omit<
             readonly fields: {
               readonly boekId: {
                 readonly nullable: false;
-                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
               readonly id: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/uuid@1' };
+              };
+              readonly isRead: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
               readonly studentId: {
                 readonly nullable: false;
@@ -854,6 +880,7 @@ type ContractBase = Omit<
               readonly fields: {
                 readonly boekId: { readonly column: 'boek_id' };
                 readonly id: { readonly column: 'id' };
+                readonly isRead: { readonly column: 'is_read' };
                 readonly studentId: { readonly column: 'student_id' };
                 readonly updatedAt: { readonly column: 'updated_at' };
               };
@@ -1082,12 +1109,13 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['studentId'];
                 };
               };
-              readonly leesProfiels: {
+              readonly leesProfiel: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'LeesProfiel';
                 };
-                readonly cardinality: '1:N';
+                readonly cardinality: '1:1';
+                readonly nullable: true;
                 readonly on: {
                   readonly localFields: readonly ['id'];
                   readonly targetFields: readonly ['studentId'];

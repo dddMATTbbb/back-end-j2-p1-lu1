@@ -34,7 +34,7 @@
               "boekId": {
                 "nullable": false,
                 "type": {
-                  "codecId": "pg/int4@1",
+                  "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
@@ -42,6 +42,13 @@
                 "nullable": false,
                 "type": {
                   "codecId": "pg/uuid@1",
+                  "kind": "scalar"
+                }
+              },
+              "isRead": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/bool@1",
                   "kind": "scalar"
                 }
               },
@@ -85,6 +92,9 @@
                 },
                 "id": {
                   "column": "id"
+                },
+                "isRead": {
+                  "column": "is_read"
                 },
                 "studentId": {
                   "column": "student_id"
@@ -414,8 +424,9 @@
                   "namespace": "public"
                 }
               },
-              "leesProfiels": {
-                "cardinality": "1:N",
+              "leesProfiel": {
+                "cardinality": "1:1",
+                "nullable": true,
                 "on": {
                   "localFields": [
                     "id"
@@ -509,8 +520,8 @@
             "lees_lijst": {
               "columns": {
                 "boek_id": {
-                  "codecId": "pg/int4@1",
-                  "nativeType": "int4",
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
                   "nullable": false
                 },
                 "id": {
@@ -521,6 +532,15 @@
                   },
                   "nativeType": "uuid",
                   "nullable": false
+                },
+                "is_read": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": true
                 },
                 "student_id": {
                   "codecId": "pg/uuid@1",
@@ -570,7 +590,7 @@
                 "columns": [
                   "id"
                 ],
-                "name": "users_pkey"
+                "name": "lees_lijst_pkey"
               },
               "uniques": [
                 {
@@ -595,7 +615,7 @@
                   "name": "lees_profiel_gender_check"
                 },
                 {
-                  "expression": "(leesniveau = ANY (ARRAY['2F'::text, '3F'::text]))",
+                  "expression": "(leesniveau = ANY (ARRAY['2F'::text, '3F'::text, '2/3F'::text]))",
                   "name": "lees_profiel_leesniveau_check"
                 }
               ],
@@ -677,9 +697,16 @@
                 "columns": [
                   "id"
                 ],
-                "name": "users_pkey"
+                "name": "lees_profiel_pkey"
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "student_id"
+                  ],
+                  "name": "lees_profiel_student_id_key"
+                }
+              ]
             },
             "refresh_tokens": {
               "columns": {
@@ -762,7 +789,7 @@
                 "columns": [
                   "id"
                 ],
-                "name": "users_pkey"
+                "name": "refresh_tokens_pkey"
               },
               "uniques": [
                 {
@@ -908,7 +935,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "9d3885a138753e7a0d848beaca7a1359426443103065354887140504184c5afe"
+    "storageHash": "dcc730a7c8d5062c5851a8a94d4dbe488fbeba3cf6c1d7a785a741e49d75f6e7"
   },
   "capabilities": {
     "postgres": {
