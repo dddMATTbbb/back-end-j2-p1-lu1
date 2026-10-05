@@ -4,17 +4,21 @@ type BoekenQuery = {
     Querystring: { zoekTerm?: string };
 };
 
+type BoekQuery = {
+    Querystring: {boekId?: string};
+}
+
 export async function boekenRoutes(fastify: FastifyInstance) {
+    const db = fastify.mongo.client.db('j1-p1-lu1');
+    const boekenCollection = db.collection('boeken');
+
     async function getBooks(
         request: FastifyRequest<BoekenQuery>,
         reply: FastifyReply
     ) {
-        fastify.log.info({ url: request.url, query: request.query }, 'boeken request');
         const { zoekTerm } = request.query;
 
         try {
-            const db = fastify.mongo.client.db('j1-p1-lu1');
-            const boekenCollection = db.collection('boeken');
 
             if (!zoekTerm?.trim()) {
                 const boeken = await boekenCollection.find().toArray();
@@ -50,9 +54,26 @@ export async function boekenRoutes(fastify: FastifyInstance) {
         }
     }
 
+    async function getBook(request: FastifyRequest<BoekQuery>, reply: FastifyReply) {
+        const boekId = request.query;
+
+        try{
+            const boek = await boekenCollection.findOne({boekId})
+            return reply.status(200).send(boek);
+        } catch (error) {
+            return reply.status(500).send({ error: 'Database query mislukt' });
+        }
+    }
+
     fastify.get<BoekenQuery>(
         '/boeken',
         { preHandler: [fastify.authenticate] },
         getBooks
     );
+
+    fastify.get<BoekQuery>(
+        '/boek',
+        { preHandler: [fastify.authenticate] },
+        getBook
+    )
 }
