@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import {ObjectId} from "mongodb";
+import type {LeesProfiel} from "../types/leesprofiel.ts";
 
 type BoekenQuery = {
     Querystring: { zoekTerm?: string };
@@ -71,6 +72,20 @@ export async function boekenRoutes(fastify: FastifyInstance) {
             return reply.status(200).send(boek);
         } catch (error) {
             return reply.status(500).send({ error: 'Database query mislukt' });
+        }
+    }
+
+    async function getRecomendation(request: FastifyRequest<{Body: LeesProfiel}>, reply: FastifyReply) {
+        const {leeftijd, gender, leesniveau, genre} = request.body || {};
+
+        if (!leeftijd || !gender || !leesniveau || !genre) {
+            return reply.status(400).send({ message: "invalid input" });
+        }
+
+        try{
+
+        }catch(err) {
+
         }
     }
 
