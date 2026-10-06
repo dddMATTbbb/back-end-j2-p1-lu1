@@ -11,6 +11,7 @@ type LeesLijstQuery = {
         boekId?: string;
         id?: string;
         isRead?: boolean;
+        isBookmarked?: boolean;
     };
 };
 
@@ -80,56 +81,47 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
     }
 
     // POST /leesLijst: Voegt een boek toe aan de leeslijst van de student
-    async function handleAddBoekLeeslijst(request: FastifyRequest<LeesLijstQuery>, reply: FastifyReply) {
+    async function handleToggleBoekLeeslijst(request: FastifyRequest<LeesLijstQuery>, reply: FastifyReply) {
         const userId: string = request.user.id;
         const boekId = request.body?.boekId || request.body?.id || request.query?.boekId || request.query?.id;
+        const explicitIsBookmarked = request.body?.isBookmarked;
+        fastify.log.info(explicitIsBookmarked);
 
         if (!boekId) {
             return reply.status(400).send({ message: "Geen boekId meegegeven" });
         }
 
         try {
-            // Controleer of het boek al in de leeslijst staat van deze student
             const existing = await db.orm.public.LeesLijst.where({ studentId: userId, boekId: boekId }).first();
-            if (existing) {
-                return reply.status(200).send({
-                    message: "Boek staat al in de leeslijst",
-                    boek: existing,
+            const shouldBeBookmarked = typeof explicitIsBookmarked === 'boolean' ? explicitIsBookmarked : !existing;
+
+            if (shouldBeBookmarked) {
+                if (existing) {
+                    return reply.status(200).send({
+                        message: "Boek staat al in de leeslijst",
+                        boek: existing,
+                        isBookmarked: true,
+                        isRead: Boolean(existing.isRead),
+                    });
+                }
+
+                const nieuwBoek = await db.orm.public.LeesLijst.create({
+                    studentId: userId,
+                    boekId: boekId,
+                    isRead: false,
+                });
+
+                return reply.status(201).send({
+                    message: "Boek succesvol toegevoegd aan de leeslijst",
+                    boek: nieuwBoek,
                     isBookmarked: true,
-                    isRead: Boolean(existing.isRead),
+                    isRead: false,
                 });
             }
 
-            // Voeg toe aan PostgreSQL via Prisma 8
-            const nieuwBoek = await db.orm.public.LeesLijst.create({
-                studentId: userId,
-                boekId: boekId,
-                isRead: false,
-            });
-
-            return reply.status(201).send({
-                message: "Boek succesvol toegevoegd aan de leeslijst",
-                boek: nieuwBoek,
-                isBookmarked: true,
-                isRead: false,
-            });
-        } catch (error) {
-            fastify.log.error(error);
-            return reply.status(500).send({ message: "Serverfout bij het toevoegen aan de leeslijst" });
-        }
-    }
-
-    // DELETE /leesLijst: Verwijdert een boek uit de leeslijst van de student
-    async function handleRemoveBoekLeeslijst(request: FastifyRequest<LeesLijstQuery>, reply: FastifyReply) {
-        const userId: string = request.user.id;
-        const boekId = request.body?.boekId || request.body?.id || request.query?.boekId || request.query?.id;
-
-        if (!boekId) {
-            return reply.status(400).send({ message: "Geen boekId meegegeven" });
-        }
-
-        try {
+            // Verwijderen (idempotent: deleteAll geeft geen fout als er niets te verwijderen valt)
             await db.orm.public.LeesLijst.where({ studentId: userId, boekId: boekId }).deleteAll();
+
             return reply.status(200).send({
                 message: "Boek succesvol verwijderd uit de leeslijst",
                 boekId: boekId,
@@ -137,7 +129,7 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
             });
         } catch (error) {
             fastify.log.error(error);
-            return reply.status(500).send({ message: "Serverfout bij het verwijderen uit de leeslijst" });
+            return reply.status(500).send({ message: "Serverfout bij het bijwerken van de leeslijst" });
         }
     }
 
@@ -189,8 +181,7 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
     }
 
     fastify.get('/leesLijst', { preHandler: [fastify.authenticate] }, handleGetLeeslijst);
-    fastify.post<LeesLijstQuery>('/leesLijst', { preHandler: [fastify.authenticate] }, handleAddBoekLeeslijst);
-    fastify.delete<LeesLijstQuery>('/leesLijst', { preHandler: [fastify.authenticate] }, handleRemoveBoekLeeslijst);
+    fastify.post<LeesLijstQuery>('/leesLijst', { preHandler: [fastify.authenticate] }, handleToggleBoekLeeslijst);
     fastify.patch<LeesLijstQuery>('/leesLijst/status', { preHandler: [fastify.authenticate] }, handleUpdateBoekStatus);
     fastify.put<LeesLijstQuery>('/leesLijst/status', { preHandler: [fastify.authenticate] }, handleUpdateBoekStatus);
 }
