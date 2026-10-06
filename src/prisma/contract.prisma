@@ -7,7 +7,7 @@ model Users {
   passwordHash                              VarChar(255)           @map("password_hash")
   role                                      VarChar(50)
   createdAt                                 Timestamptz            @default(now()) @map("created_at")
-  leesLijst                                 LeesLijst?
+  leesLijst                                 LeesLijst[]
   leesProfiel                               LeesProfiel?
   refreshTokens                             RefreshTokens[]
   studentenLijstDocents                     StudentenLijstDocent[] @relation(name: "studenten_lijst_docent_docent_id_fkey")
@@ -19,7 +19,7 @@ model Users {
 
 model LeesLijst {
   id        Uuid        @id(map: "lees_lijst_pkey") @default(sql`gen_random_uuid()`)
-  studentId Uuid        @unique(map: "lees_lijst_student_id_key") @map("student_id")
+  studentId Uuid        @map("student_id")
   boekId    String      @map("boek_id")
   isRead    Boolean?    @default(false) @map("is_read")
   updatedAt Timestamptz @default(now()) @map("updated_at")

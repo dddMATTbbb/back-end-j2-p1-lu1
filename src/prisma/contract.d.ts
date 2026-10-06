@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'dcc730a7c8d5062c5851a8a94d4dbe488fbeba3cf6c1d7a785a741e49d75f6e7'>;
+  StorageHashBase<'66c091b0f3f8fb78924b8ee42e7bf71e2e3e8cc9c53503ed117636a333029b9e'>;
 export type ExecutionHash = ExecutionHashBase<string>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
@@ -448,7 +448,7 @@ export namespace Models {
     id: CodecTypes['pg/uuid@1']['output'];
     passwordHash: Varchar<255>;
     role: Varchar<50>;
-    leesLijst: public_LeesLijst | null;
+    leesLijst: public_LeesLijst[];
     leesProfiel: public_LeesProfiel | null;
     refreshTokens: public_RefreshTokens[];
     studentenLijstDocents: public_StudentenLijstDocent[];
@@ -529,10 +529,6 @@ type ContractBase = Omit<
               };
               primaryKey: { readonly columns: readonly ['id']; readonly name: 'lees_lijst_pkey' };
               uniques: readonly [
-                {
-                  readonly columns: readonly ['student_id'];
-                  readonly name: 'lees_lijst_student_id_key';
-                },
                 {
                   readonly columns: readonly ['student_id', 'boek_id'];
                   readonly name: 'unique_student_boek';
@@ -1102,8 +1098,7 @@ type ContractBase = Omit<
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'LeesLijst';
                 };
-                readonly cardinality: '1:1';
-                readonly nullable: true;
+                readonly cardinality: '1:N';
                 readonly on: {
                   readonly localFields: readonly ['id'];
                   readonly targetFields: readonly ['studentId'];

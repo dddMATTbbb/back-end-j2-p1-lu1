@@ -409,8 +409,7 @@
             },
             "relations": {
               "leesLijst": {
-                "cardinality": "1:1",
-                "nullable": true,
+                "cardinality": "1:N",
                 "on": {
                   "localFields": [
                     "id"
@@ -593,12 +592,6 @@
                 "name": "lees_lijst_pkey"
               },
               "uniques": [
-                {
-                  "columns": [
-                    "student_id"
-                  ],
-                  "name": "lees_lijst_student_id_key"
-                },
                 {
                   "columns": [
                     "student_id",
@@ -935,7 +928,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "dcc730a7c8d5062c5851a8a94d4dbe488fbeba3cf6c1d7a785a741e49d75f6e7"
+    "storageHash": "66c091b0f3f8fb78924b8ee42e7bf71e2e3e8cc9c53503ed117636a333029b9e"
   },
   "capabilities": {
     "postgres": {

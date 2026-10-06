@@ -1,54 +1,83 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import {ObjectId} from "mongodb";
-import type {LeesProfiel} from "../types/leesprofiel.ts";
+import { ObjectId } from "mongodb";
+import { db as postgresDb } from "../prisma/db.ts";
 
 type BoekenQuery = {
     Querystring: { zoekTerm?: string };
 };
 
 type BoekQuery = {
-    Querystring: {boekId?: string};
-}
+    Querystring: { boekId?: string };
+};
 
 export async function boekenRoutes(fastify: FastifyInstance) {
-    const db = fastify.mongo.client.db('j1-p1-lu1');
-    const boekenCollection = db.collection('boeken');
+    const mongoDb = fastify.mongo.client.db('j1-p1-lu1');
+    const boekenCollection = mongoDb.collection('boeken');
 
     async function getBooks(
         request: FastifyRequest<BoekenQuery>,
         reply: FastifyReply
     ) {
         const { zoekTerm } = request.query;
+        const userId = request.user?.id;
 
         try {
-
-            if (!zoekTerm?.trim()) {
-                const boeken = await boekenCollection.find().toArray();
-                return reply.status(200).send(boeken);
+            // Haal de bestaande leeslijst status van de ingelogde gebruiker op uit PostgreSQL
+            const userLeesLijst = new Map<string, { isRead: boolean }>();
+            if (userId) {
+                for await (const row of postgresDb.orm.public.LeesLijst.where({ studentId: userId }).all()) {
+                    userLeesLijst.set(row.boekId, { isRead: Boolean(row.isRead) });
+                }
             }
 
-            const boeken = await boekenCollection.aggregate([
-                {
-                    $search: {
-                        index: 'default',
-                        text: { query: zoekTerm, path: ['Titel', 'Auteur'], fuzzy: { maxEdits: 1, prefixLength: 2 } },
-                    },
-                },
-                { $limit: 20 },
-                { $project:
+            let rawBoeken: any[] = [];
+
+            if (!zoekTerm?.trim()) {
+                rawBoeken = await boekenCollection.find().toArray();
+            } else {
+                try {
+                    rawBoeken = await boekenCollection.aggregate([
                         {
-                            _id: 0,
-                            id: { $toString: '$_id' },
-                            Titel: 1,
-                            Auteur: 1,
-                            'Korte omschrijving': 1,
-                            Niveau: 1,
-                            Themas_boek: 1,
-                            'Type materiaal': 1,
-                            score: { $meta: 'searchScore' },
-                        }},
-            ]).toArray();
-            fastify.log.info({ zoekTerm, aantal: boeken.length }, 'zoekresultaat');
+                            $search: {
+                                index: 'default',
+                                text: { query: zoekTerm, path: ['Titel', 'Auteur'], fuzzy: { maxEdits: 1, prefixLength: 2 } },
+                            },
+                        },
+                        { $limit: 20 },
+                    ]).toArray();
+                } catch {
+                    // Fallback als MongoDB Atlas search index niet geconfigureerd is
+                    rawBoeken = await boekenCollection.find({
+                        $or: [
+                            { Titel: { $regex: zoekTerm, $options: 'i' } },
+                            { Auteur: { $regex: zoekTerm, $options: 'i' } },
+                        ]
+                    }).limit(20).toArray();
+                }
+                fastify.log.info({ zoekTerm, aantal: rawBoeken.length }, 'zoekresultaat');
+            }
+
+            const boeken = rawBoeken.map((b) => {
+                const bookId = b._id ? b._id.toString() : (b.id ? b.id.toString() : '');
+                const entry = userLeesLijst.get(bookId);
+                return {
+                    id: bookId,
+                    _id: bookId,
+                    Titel: b.Titel,
+                    titel: b.Titel,
+                    Auteur: b.Auteur,
+                    auteur: b.Auteur,
+                    Omschrijving: b['Korte omschrijving'] || b.Omschrijving || '',
+                    'Korte omschrijving': b['Korte omschrijving'] || b.Omschrijving || '',
+                    Niveau: b.Niveau || '',
+                    Themas: b.Themas_boek || b.Themas || '',
+                    Themas_boek: b.Themas_boek || b.Themas || '',
+                    'Type materiaal': b['Type materiaal'] || '',
+                    isBookmarked: Boolean(entry),
+                    isRead: entry ? entry.isRead : false,
+                };
+            });
+
             return reply.status(200).send(boeken);
         } catch (err) {
             fastify.log.error(err);
@@ -63,29 +92,21 @@ export async function boekenRoutes(fastify: FastifyInstance) {
             return reply.status(400).send({ message: "no boek id found" });
         }
 
-        try{
+        try {
             const boekIdObject = new ObjectId(boekId);
-            const boek = await boekenCollection.findOne({_id: boekIdObject})
+            const boek = await boekenCollection.findOne({ _id: boekIdObject });
             if (!boek) {
                 return reply.status(404).send({ message: "Boek niet gevonden" });
             }
-            return reply.status(200).send(boek);
+            const idStr = boek._id.toString();
+            return reply.status(200).send({
+                ...boek,
+                id: idStr,
+                _id: idStr,
+            });
         } catch (error) {
+            fastify.log.error(error);
             return reply.status(500).send({ error: 'Database query mislukt' });
-        }
-    }
-
-    async function getRecomendation(request: FastifyRequest<{Body: LeesProfiel}>, reply: FastifyReply) {
-        const {leeftijd, gender, leesniveau, genre} = request.body || {};
-
-        if (!leeftijd || !gender || !leesniveau || !genre) {
-            return reply.status(400).send({ message: "invalid input" });
-        }
-
-        try{
-
-        }catch(err) {
-
         }
     }
 
@@ -99,5 +120,5 @@ export async function boekenRoutes(fastify: FastifyInstance) {
         '/boek',
         { preHandler: [fastify.authenticate] },
         getBook
-    )
+    );
 }
