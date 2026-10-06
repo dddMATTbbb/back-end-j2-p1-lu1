@@ -41,12 +41,12 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
         const {boekId} = request.query;
 
         try{
-            const boek = db.orm.public.LeesLijst.create({
+            const boek = await db.orm.public.LeesLijst.create({
                 boekId: boekId,
                 studentId: userId
             })
 
-            reply.status(201).send(boek);
+            return reply.status(201).send(boek);
         } catch(error){
             return reply.status(500).send({message: "server error"});
         }

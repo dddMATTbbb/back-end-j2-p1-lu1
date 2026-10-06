@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import {ObjectId} from "mongodb";
 
 type BoekenQuery = {
     Querystring: { zoekTerm?: string };
@@ -55,10 +56,18 @@ export async function boekenRoutes(fastify: FastifyInstance) {
     }
 
     async function getBook(request: FastifyRequest<BoekQuery>, reply: FastifyReply) {
-        const boekId = request.query;
+        const { boekId } = request.query as { boekId?: string };
+
+        if (!boekId) {
+            return reply.status(400).send({ message: "no boek id found" });
+        }
 
         try{
-            const boek = await boekenCollection.findOne({boekId})
+            const boekIdObject = new ObjectId(boekId);
+            const boek = await boekenCollection.findOne({_id: boekIdObject})
+            if (!boek) {
+                return reply.status(404).send({ message: "Boek niet gevonden" });
+            }
             return reply.status(200).send(boek);
         } catch (error) {
             return reply.status(500).send({ error: 'Database query mislukt' });
