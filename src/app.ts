@@ -7,6 +7,7 @@ import { authRoutes } from './routes/auth';
 import {leesProfielRoutes} from "./routes/leesProfiel.ts";
 import {leesLijstRoutes} from "./routes/leesLijst.ts";
 import {docentRoutes} from "./routes/Docent.ts";
+import {userRoutes} from "./routes/user.ts";
 import {jwtPlugin} from "./plugins/jwt.ts";
 import {cookiePlugin} from "./plugins/cookie";
 import {mongoDBPlugin} from "./plugins/mongoDB.ts";
@@ -40,6 +41,7 @@ export function buildApp() {
     fastify.register(leesProfielRoutes);
     fastify.register(leesLijstRoutes);
     fastify.register(docentRoutes);
+    fastify.register(userRoutes);
 
     return fastify;
 }
