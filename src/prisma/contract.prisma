@@ -7,7 +7,7 @@ model Users {
   passwordHash                              VarChar(255)           @map("password_hash")
   role                                      VarChar(50)
   createdAt                                 Timestamptz            @default(now()) @map("created_at")
-  leesLijst                                 LeesLijst[]
+  leesLijsts                                LeesLijst[]
   leesProfiel                               LeesProfiel?
   refreshTokens                             RefreshTokens[]
   studentenLijstDocents                     StudentenLijstDocent[] @relation(name: "studenten_lijst_docent_docent_id_fkey")
@@ -31,14 +31,14 @@ model LeesLijst {
 }
 
 model LeesProfiel {
-  id         Uuid        @id(map: "lees_profiel_pkey") @default(sql`gen_random_uuid()`)
-  studentId  Uuid        @unique(map: "lees_profiel_student_id_key") @map("student_id")
-  leeftijd   Int
-  gender     String
-  leesniveau String
-  genre      String
-  updatedAt  Timestamptz @default(now()) @map("updated_at")
-  student    Users       @relation(fields: [studentId], references: [id], onDelete: Cascade, map: "lees_profiel_student_id_fkey")
+  id                     Uuid        @id(map: "lees_profiel_pkey") @default(sql`gen_random_uuid()`)
+  studentId              Uuid        @unique(map: "lees_profiel_student_id_key") @map("student_id")
+  leeftijd               Int
+  gender                 String
+  leesniveau             String
+  favorieteTypeMatariaal String      @map("favoriete_type_matariaal")
+  updatedAt              Timestamptz @default(now()) @map("updated_at")
+  student                Users       @relation(fields: [studentId], references: [id], onDelete: Cascade, map: "lees_profiel_student_id_fkey")
 
   @@index([studentId], map: "idx_lees_profiel_student")
   @@check(expression: "(gender = ANY (ARRAY['man'::text, 'vrouw'::text, 'non-binair'::text, 'anders'::text]))", map: "lees_profiel_gender_check")

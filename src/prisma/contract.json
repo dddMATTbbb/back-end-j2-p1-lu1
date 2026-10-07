@@ -109,14 +109,14 @@
           },
           "LeesProfiel": {
             "fields": {
-              "gender": {
+              "favorieteTypeMatariaal": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
-              "genre": {
+              "gender": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/text@1",
@@ -179,11 +179,11 @@
             },
             "storage": {
               "fields": {
+                "favorieteTypeMatariaal": {
+                  "column": "favoriete_type_matariaal"
+                },
                 "gender": {
                   "column": "gender"
-                },
-                "genre": {
-                  "column": "genre"
                 },
                 "id": {
                   "column": "id"
@@ -408,7 +408,7 @@
               }
             },
             "relations": {
-              "leesLijst": {
+              "leesLijsts": {
                 "cardinality": "1:N",
                 "on": {
                   "localFields": [
@@ -613,12 +613,12 @@
                 }
               ],
               "columns": {
-                "gender": {
+                "favoriete_type_matariaal": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
                 },
-                "genre": {
+                "gender": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
@@ -928,7 +928,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "66c091b0f3f8fb78924b8ee42e7bf71e2e3e8cc9c53503ed117636a333029b9e"
+    "storageHash": "cbdec6d31dd8afe2d15fc74a40625ba695c2408118783743a9fd7df2b7ceb5de"
   },
   "capabilities": {
     "postgres": {

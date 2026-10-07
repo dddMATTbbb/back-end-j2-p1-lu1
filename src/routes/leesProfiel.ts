@@ -5,7 +5,7 @@ import {db} from "../prisma/db.ts"
 export async function leesProfielRoutes(fastify: FastifyInstance) {
     async function handleCreateLeesProfiel(request: FastifyRequest<{ Body: LeesProfiel }>, reply: FastifyReply) {
         const userId:string = request.user.id;
-        const { leeftijd, gender, leesniveau, genre } = request.body;
+        const { leeftijd, gender, leesniveau, favorieteTypeMatariaal } = request.body;
 
         const result = await db.orm.public.LeesProfiel.where({studentId: userId}).first();
 
@@ -19,7 +19,7 @@ export async function leesProfielRoutes(fastify: FastifyInstance) {
                 leeftijd: leeftijd,
                 gender: gender,
                 leesniveau: leesniveau,
-                genre: genre,
+                favorieteTypeMatariaal: favorieteTypeMatariaal
             })
             return reply.status(201).send({ message: "leesprofiel added successfully" });
         } catch (err) {
@@ -47,14 +47,14 @@ export async function leesProfielRoutes(fastify: FastifyInstance) {
 
     async function handleUpdateLeesProfiel(request: FastifyRequest<{Body: LeesProfiel}>, reply: FastifyReply) {
         const userId = request.user.id;
-        const { leeftijd, gender, leesniveau, genre } = request.body;
+        const { leeftijd, gender, leesniveau, favorieteTypeMatariaal } = request.body;
 
         try{
             const result = await db.orm.public.LeesProfiel.where({studentId: userId}).update({
                 leeftijd: leeftijd,
                 gender: gender,
                 leesniveau: leesniveau,
-                genre: genre,
+                favorieteTypeMatariaal: favorieteTypeMatariaal,
             })
             return reply.status(200).send({result});
         }catch(err) {

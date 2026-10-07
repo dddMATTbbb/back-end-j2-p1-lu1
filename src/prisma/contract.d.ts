@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'66c091b0f3f8fb78924b8ee42e7bf71e2e3e8cc9c53503ed117636a333029b9e'>;
+  StorageHashBase<'cbdec6d31dd8afe2d15fc74a40625ba695c2408118783743a9fd7df2b7ceb5de'>;
 export type ExecutionHash = ExecutionHashBase<string>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
@@ -257,8 +257,8 @@ export type FieldOutputTypes = {
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
     readonly LeesProfiel: {
+      readonly favorieteTypeMatariaal: CodecTypes['pg/text@1']['output'];
       readonly gender: CodecTypes['pg/text@1']['output'];
-      readonly genre: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/uuid@1']['output'];
       readonly leeftijd: CodecTypes['pg/int4@1']['output'];
       readonly leesniveau: CodecTypes['pg/text@1']['output'];
@@ -296,8 +296,8 @@ export type FieldInputTypes = {
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly LeesProfiel: {
+      readonly favorieteTypeMatariaal: CodecTypes['pg/text@1']['input'];
       readonly gender: CodecTypes['pg/text@1']['input'];
-      readonly genre: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/uuid@1']['input'];
       readonly leeftijd: CodecTypes['pg/int4@1']['input'];
       readonly leesniveau: CodecTypes['pg/text@1']['input'];
@@ -335,8 +335,8 @@ export type StorageColumnTypes = {
       readonly updated_at: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
     readonly lees_profiel: {
+      readonly favoriete_type_matariaal: CodecTypes['pg/text@1']['output'];
       readonly gender: CodecTypes['pg/text@1']['output'];
-      readonly genre: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/uuid@1']['output'];
       readonly leeftijd: CodecTypes['pg/int4@1']['output'];
       readonly leesniveau: CodecTypes['pg/text@1']['output'];
@@ -374,8 +374,8 @@ export type StorageColumnInputTypes = {
       readonly updated_at: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly lees_profiel: {
+      readonly favoriete_type_matariaal: CodecTypes['pg/text@1']['input'];
       readonly gender: CodecTypes['pg/text@1']['input'];
-      readonly genre: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/uuid@1']['input'];
       readonly leeftijd: CodecTypes['pg/int4@1']['input'];
       readonly leesniveau: CodecTypes['pg/text@1']['input'];
@@ -415,8 +415,8 @@ export namespace Models {
     readonly [RelationKeys]?: 'student';
   };
   export type public_LeesProfiel = {
+    favorieteTypeMatariaal: CodecTypes['pg/text@1']['output'];
     gender: CodecTypes['pg/text@1']['output'];
-    genre: CodecTypes['pg/text@1']['output'];
     id: CodecTypes['pg/uuid@1']['output'];
     leeftijd: CodecTypes['pg/int4@1']['output'];
     leesniveau: CodecTypes['pg/text@1']['output'];
@@ -448,13 +448,13 @@ export namespace Models {
     id: CodecTypes['pg/uuid@1']['output'];
     passwordHash: Varchar<255>;
     role: Varchar<50>;
-    leesLijst: public_LeesLijst[];
+    leesLijsts: public_LeesLijst[];
     leesProfiel: public_LeesProfiel | null;
     refreshTokens: public_RefreshTokens[];
     studentenLijstDocents: public_StudentenLijstDocent[];
     studentenLijstDocentsStudentenLijstDocent: public_StudentenLijstDocent[];
     readonly [RelationKeys]?:
-      | 'leesLijst'
+      | 'leesLijsts'
       | 'leesProfiel'
       | 'refreshTokens'
       | 'studentenLijstDocents'
@@ -559,12 +559,12 @@ type ContractBase = Omit<
             };
             readonly lees_profiel: {
               columns: {
-                readonly gender: {
+                readonly favoriete_type_matariaal: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
                 };
-                readonly genre: {
+                readonly gender: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
@@ -884,11 +884,11 @@ type ContractBase = Omit<
           };
           readonly LeesProfiel: {
             readonly fields: {
-              readonly gender: {
+              readonly favorieteTypeMatariaal: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
-              readonly genre: {
+              readonly gender: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
@@ -934,8 +934,8 @@ type ContractBase = Omit<
               readonly table: 'lees_profiel';
               readonly namespaceId: 'public';
               readonly fields: {
+                readonly favorieteTypeMatariaal: { readonly column: 'favoriete_type_matariaal' };
                 readonly gender: { readonly column: 'gender' };
-                readonly genre: { readonly column: 'genre' };
                 readonly id: { readonly column: 'id' };
                 readonly leeftijd: { readonly column: 'leeftijd' };
                 readonly leesniveau: { readonly column: 'leesniveau' };
@@ -1093,7 +1093,7 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
-              readonly leesLijst: {
+              readonly leesLijsts: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'LeesLijst';
