@@ -27,6 +27,15 @@ export async function docentRoutes(fastify: FastifyInstance) {
                 return reply.status(400).send({message: "Docent email was not found in the db"});
             }
 
+            const checkIfexists = await db.orm.public.StudentenLijstDocent.where({
+                docentId: docent.id,
+                studentId: studentId,
+            }).first();
+
+            if(checkIfexists) {
+                return reply.status(400).send({message: "Koppeling bestaat al"});
+            }
+
             await db.orm.public.StudentenLijstDocent.create({
                 studentId: studentId,
                 docentId: docent.id
