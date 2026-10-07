@@ -8,7 +8,7 @@ type docentQuery = {
     };
 }
 
-export async function docentRoutes(fastifyInstance: FastifyInstance) {
+export async function docentRoutes(fastify: FastifyInstance) {
     async function handleStudentAddDocent(request: FastifyRequest<docentQuery>, reply: FastifyReply) {
         const studentId: string = request.user.id
         const docentEmail = request.query.docentMail;
@@ -37,4 +37,9 @@ export async function docentRoutes(fastifyInstance: FastifyInstance) {
             return reply.status(500).send({message: "serverfout"});
         }
     }
+
+    fastify.post<docentQuery>('/addDocent',
+        {preHandler: [fastify.authenticate]},
+        handleStudentAddDocent
+    );
 }
