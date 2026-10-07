@@ -1,14 +1,17 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../prisma/db.ts";
+import type {Varchar} from "@prisma/orm-postgres/target/codec-types";
 
-interface docentBody {
-    docentEmail: string;
+type docentQuery = {
+    Querystring: {
+        docentMail?: Varchar<255>;
+    };
 }
 
 export async function docentRoutes(fastify: FastifyInstance) {
-    async function handleStudentAddDocent(request: FastifyRequest<{Body: docentBody}>, reply: FastifyReply) {
+    async function handleStudentAddDocent(request: FastifyRequest<docentQuery>, reply: FastifyReply) {
         const studentId: string = request.user.id
-        const {docentEmail} = request.body || {};
+        const docentEmail = request.query.docentMail;
 
         if (!docentEmail) {
             return reply.status(400).send({message: "Docent email was not found in the query"});
@@ -35,7 +38,7 @@ export async function docentRoutes(fastify: FastifyInstance) {
         }
     }
 
-    fastify.post<{ Body: docentBody }>('/addDocent',
+    fastify.post<docentQuery>('/addDocent',
         {preHandler: [fastify.authenticate]},
         handleStudentAddDocent
     );
