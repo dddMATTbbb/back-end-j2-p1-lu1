@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../prisma/db.ts";
 import type {Varchar} from "@prisma/orm-postgres/target/codec-types";
+import type {Student} from "../types/student.ts";
 
 type docentQuery = {
     Querystring: {
@@ -47,8 +48,42 @@ export async function docentRoutes(fastify: FastifyInstance) {
         }
     }
 
+    async function handleStudentGet(request: FastifyRequest, reply: FastifyReply) {
+        const docentId: string = request.user.id
+        const students: Student[] = []
+        if (!docentId) {
+            return reply.status(400).send({message: "Docent id was not found"});
+        }
+
+        try{
+            const studentRows = await db.orm.public.StudentenLijstDocent.where({docentId: docentId}).all();
+            if (!studentRows) {
+                return reply.status(400).send({message: "There are no students"});
+            }
+
+            //fastify.log.info(students[0]?.studentId);
+
+            const studentIds = studentRows.map(row => row.studentId)
+
+            for (const studentId of studentIds) {
+                const studentInfo = await db.orm.public.Users.where({ id: studentId }).first();
+
+            }
+
+        } catch (error){
+            return reply.status(500).send({message: "serverfout"});
+        }
+
+
+    }
+
     fastify.post<docentQuery>('/addDocent',
         {preHandler: [fastify.authenticate]},
         handleStudentAddDocent
+    );
+
+    fastify.get('/getStudents',
+        {preHandler: [fastify.authenticate]},
+        handleStudentGet
     );
 }
