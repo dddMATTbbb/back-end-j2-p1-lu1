@@ -8,6 +8,11 @@ type docentQuery = {
         docentMail?: Varchar<255>;
         studentId?: string;
     };
+    Body?: {
+        studentId?: string;
+        boekId?: string;
+        isBookmarked?: boolean;
+    }
 }
 
 export async function docentRoutes(fastify: FastifyInstance) {
@@ -130,6 +135,64 @@ export async function docentRoutes(fastify: FastifyInstance) {
         }
     }
 
+    async function handleUpdateLeesLijstStudentAsDocent(request: FastifyRequest<docentQuery>, reply: FastifyReply) {
+        const docentId: string = request.user.id;
+        const studentId: string | undefined = request.body?.studentId;
+        const boekId: string | undefined = request.body?.boekId;
+        const isBookmarked: boolean | undefined = request.body?.isBookmarked;
+
+        if (!studentId || !boekId || !isBookmarked === undefined) {
+            fastify.log.info(studentId)
+            fastify.log.info(boekId)
+            fastify.log.info(isBookmarked)
+            return reply.status(400).send({message: "Wrong parameters"});
+        }
+        try{
+            const checkStudentLink = await db.orm.public.StudentenLijstDocent.where({studentId: studentId, docentId: docentId}).first();
+            if (!checkStudentLink) {
+                return reply.status(401).send({message: "There is no link between student and docent"});
+            }
+
+            const existing = await db.orm.public.LeesLijst.where({ studentId: studentId, boekId: boekId }).first();
+            const shouldBeBookmarked = typeof isBookmarked === 'boolean' ? isBookmarked : !existing;
+
+            if (shouldBeBookmarked) {
+                if (existing) {
+                    return reply.status(200).send({
+                        message: "Boek staat al in de leeslijst",
+                        boek: existing,
+                        isBookmarked: true,
+                        isRead: Boolean(existing.isRead),
+                    });
+                }
+
+                const nieuwBoek = await db.orm.public.LeesLijst.create({
+                    studentId: studentId,
+                    boekId: boekId,
+                    isRead: false,
+                });
+
+                return reply.status(201).send({
+                    message: "Boek succesvol toegevoegd aan de leeslijst",
+                    boek: nieuwBoek,
+                    isBookmarked: true,
+                    isRead: false,
+                });
+            }
+
+            // Verwijderen (idempotent: deleteAll geeft geen fout als er niets te verwijderen valt)
+            await db.orm.public.LeesLijst.where({ studentId: studentId, boekId: boekId }).deleteAll();
+
+            return reply.status(200).send({
+                message: "Boek succesvol verwijderd uit de leeslijst",
+                boekId: boekId,
+                isBookmarked: false,
+            });
+        }catch(error){
+            return reply.status(500).send({message: "serverfout"});
+        }
+    }
+
     fastify.post<docentQuery>('/addDocent',
         {preHandler: [fastify.authenticate]},
         handleStudentAddDocent
@@ -138,5 +201,15 @@ export async function docentRoutes(fastify: FastifyInstance) {
     fastify.get('/getStudents',
         {preHandler: [fastify.authenticate]},
         handleStudentGet
+    );
+
+    fastify.get<docentQuery>("/getBoekenStudent",
+        {preHandler: [fastify.authenticate]},
+        handleGetStudentBooks
+    );
+
+    fastify.post<docentQuery>('/updateStudentLeeslijst',
+        {preHandler: [fastify.authenticate]},
+        handleUpdateLeesLijstStudentAsDocent
     );
 }

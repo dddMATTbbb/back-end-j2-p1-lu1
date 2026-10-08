@@ -85,7 +85,6 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
         const userId: string = request.user.id;
         const boekId = request.body?.boekId || request.body?.id || request.query?.boekId || request.query?.id;
         const explicitIsBookmarked = request.body?.isBookmarked;
-        fastify.log.info(explicitIsBookmarked);
 
         if (!boekId) {
             return reply.status(400).send({ message: "Geen boekId meegegeven" });
