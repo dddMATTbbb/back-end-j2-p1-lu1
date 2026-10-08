@@ -61,14 +61,15 @@ export async function docentRoutes(fastify: FastifyInstance) {
                 return reply.status(400).send({message: "There are no students"});
             }
 
-            //fastify.log.info(students[0]?.studentId);
-
             const studentIds = studentRows.map(row => row.studentId)
 
             for (const studentId of studentIds) {
-                const studentInfo = await db.orm.public.Users.where({ id: studentId }).first();
-
+                const studentInfo = await db.orm.public.Users.where({ id: studentId }).select("id", "email").first();
+                if (!studentInfo) continue;
+                students.push(studentInfo);
             }
+
+            return reply.status(200).send(students);
 
         } catch (error){
             return reply.status(500).send({message: "serverfout"});
