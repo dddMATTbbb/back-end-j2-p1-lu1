@@ -98,12 +98,8 @@ export async function boekenRoutes(fastify: FastifyInstance) {
             if (!boek) {
                 return reply.status(404).send({ message: "Boek niet gevonden" });
             }
-            const idStr = boek._id.toString();
-            return reply.status(200).send({
-                ...boek,
-                id: idStr,
-                _id: idStr,
-            });
+
+            return reply.status(200).send(boek);
         } catch (error) {
             fastify.log.error(error);
             return reply.status(500).send({ error: 'Database query mislukt' });
@@ -167,7 +163,6 @@ export async function boekenRoutes(fastify: FastifyInstance) {
 
     fastify.get<BoekenQuery>(
         '/boek',
-        { preHandler: [fastify.authenticate] },
         getBook
     );
 
