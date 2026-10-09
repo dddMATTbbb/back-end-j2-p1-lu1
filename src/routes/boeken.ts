@@ -1,13 +1,13 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { ObjectId } from "mongodb";
-import { db as postgresDb } from "../prisma/db.ts";
+import {db, db as postgresDb} from "../prisma/db.ts";
+import type {LeesProfiel} from "../types/leesprofiel.ts";
 
 type BoekenQuery = {
-    Querystring: { zoekTerm?: string };
-};
-
-type BoekQuery = {
-    Querystring: { boekId?: string };
+    Querystring: {
+        zoekTerm?: string,
+        boekId?: string
+    };
 };
 
 export async function boekenRoutes(fastify: FastifyInstance) {
@@ -85,7 +85,7 @@ export async function boekenRoutes(fastify: FastifyInstance) {
         }
     }
 
-    async function getBook(request: FastifyRequest<BoekQuery>, reply: FastifyReply) {
+    async function getBook(request: FastifyRequest<BoekenQuery>, reply: FastifyReply) {
         const { boekId } = request.query as { boekId?: string };
 
         if (!boekId) {
@@ -110,15 +110,70 @@ export async function boekenRoutes(fastify: FastifyInstance) {
         }
     }
 
+    async function getPersonolizedBooks(request:FastifyRequest, reply: FastifyReply) {
+        const userId = request.user.id;
+
+        try{
+            const leesProfiel = await db.orm.public.LeesProfiel.where({studentId: userId}).first()
+
+            const StatusBoek = new Map<string, { isRead: boolean }>();
+            if (userId) {
+                for await (const row of postgresDb.orm.public.LeesLijst.where({ studentId: userId }).all()) {
+                    StatusBoek.set(row.boekId, { isRead: Boolean(row.isRead) });
+                }
+            }
+
+            if (!leesProfiel) {
+                return reply.status(404).send({ message: "LeesProfiel niet gevonden" });
+            }
+
+
+
+            const rawBoeken = await boekenCollection.find({"Type materiaal": leesProfiel.favorieteTypeMatariaal}).limit(3).toArray();
+
+            const boeken = rawBoeken.map((b) => {
+                const bookId = b._id ? b._id.toString() : (b.id ? b.id.toString() : '');
+                const entry = StatusBoek.get(bookId);
+                return {
+                    id: bookId,
+                    _id: bookId,
+                    Titel: b.Titel,
+                    titel: b.Titel,
+                    Auteur: b.Auteur,
+                    auteur: b.Auteur,
+                    Omschrijving: b['Korte omschrijving'] || b.Omschrijving || '',
+                    'Korte omschrijving': b['Korte omschrijving'] || b.Omschrijving || '',
+                    Niveau: b.Niveau || '',
+                    Themas: b.Themas_boek || b.Themas || '',
+                    Themas_boek: b.Themas_boek || b.Themas || '',
+                    'Type materiaal': b['Type materiaal'] || '',
+                    isBookmarked: Boolean(entry),
+                    isRead: entry ? entry.isRead : false,
+                };
+            });
+
+            return reply.status(200).send(boeken)
+        }catch (error) {
+            fastify.log.error(error);
+            return reply.status(500).send({ error: 'Server error' });
+        }
+    }
+
     fastify.get<BoekenQuery>(
         '/boeken',
         { preHandler: [fastify.authenticate] },
         getBooks
     );
 
-    fastify.get<BoekQuery>(
+    fastify.get<BoekenQuery>(
         '/boek',
         { preHandler: [fastify.authenticate] },
         getBook
     );
+
+    fastify.get(
+        '/getVoorJou',
+        { preHandler: [fastify.authenticate] },
+        getPersonolizedBooks
+    )
 }
