@@ -1,4 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import { postgressDBPlugin } from './plugins/postgressDB.ts';
+import { corsPlugin } from './plugins/cors';
 import { rootRoutes } from './routes';
 import { boekenRoutes } from './routes/boeken';
 import { authRoutes } from './routes/auth';
@@ -6,12 +8,9 @@ import {leesProfielRoutes} from "./routes/leesProfiel.ts";
 import {leesLijstRoutes} from "./routes/leesLijst.ts";
 import {docentRoutes} from "./routes/Docent.ts";
 import {userRoutes} from "./routes/user.ts";
-import { postgressDBPlugin } from './plugins/postgressDB.ts';
-import { corsPlugin } from './plugins/cors';
 import {jwtPlugin} from "./plugins/jwt.ts";
 import {cookiePlugin} from "./plugins/cookie";
 import {mongoDBPlugin} from "./plugins/mongoDB.ts";
-import {swaggerPlugin} from "./plugins/swagger.ts";
 
 export function buildApp() {
 
@@ -34,7 +33,6 @@ export function buildApp() {
     fastify.register(mongoDBPlugin);
     fastify.register(cookiePlugin);
     fastify.register(jwtPlugin);
-    fastify.register(swaggerPlugin);
 
     // Routes
     fastify.register(rootRoutes);
