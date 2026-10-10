@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { ObjectId } from "mongodb";
 import {db, db as postgresDb} from "../prisma/db.ts";
-import type {LeesProfiel} from "../types/leesprofiel.ts";
+import { boekenLijstSchema, ruwBoekSchema, foutSchema } from '../schemas/boek.ts';
 
 type BoekenQuery = {
     Querystring: {
@@ -157,18 +157,69 @@ export async function boekenRoutes(fastify: FastifyInstance) {
 
     fastify.get<BoekenQuery>(
         '/boeken',
-        { preHandler: [fastify.authenticate] },
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['boeken'],
+                summary: 'Zoek boeken of haal alle boeken op',
+                description: 'Zonder zoekTerm komen alle boeken terug, met zoekTerm maximaal 20 resultaten. Bevat per boek of het in de leeslijst staat en of het gelezen is.',
+                security: [{ bearerAuth: [] }],
+                querystring: {
+                    type: 'object',
+                    properties: {
+                        zoekTerm: { type: 'string', description: 'Zoekt op titel en auteur' },
+                    },
+                },
+                response: {
+                    200: boekenLijstSchema,
+                    401: foutSchema,
+                    500: foutSchema,
+                },
+            },
+        },
         getBooks
     );
 
     fastify.get<BoekenQuery>(
         '/boek',
+        {
+            schema: {
+                tags: ['boeken'],
+                summary: 'Haal één boek op via id',
+                querystring: {
+                    type: 'object',
+                    properties: {
+                        boekId: { type: 'string', description: 'MongoDB ObjectId van het boek' },
+                    },
+                },
+                response: {
+                    200: ruwBoekSchema,
+                    400: foutSchema,
+                    404: foutSchema,
+                    500: foutSchema,
+                },
+            },
+        },
         getBook
     );
 
     fastify.get(
         '/getVoorJou',
-        { preHandler: [fastify.authenticate] },
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['boeken'],
+                summary: 'Persoonlijke boekaanbevelingen (max 3)',
+                description: 'Gebaseerd op het favoriete type materiaal uit het leesprofiel van de ingelogde student.',
+                security: [{ bearerAuth: [] }],
+                response: {
+                    200: boekenLijstSchema,
+                    401: foutSchema,
+                    404: foutSchema,
+                    500: foutSchema,
+                },
+            },
+        },
         getPersonolizedBooks
-    )
+    );
 }

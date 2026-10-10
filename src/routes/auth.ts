@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthBody } from '../types/auth';
 import {db} from "../prisma/db"
 import type {Varchar} from "@prisma/orm-postgres/target/codec-types";
+import { authBodySchema, berichtSchema, authFoutSchema } from '../schemas/auth.ts';
 
 const bycrypt = require('bcrypt');
 
@@ -97,8 +98,55 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.status(200).send({ message: "Logged in successful" });
     }
 
-    fastify.post('/login', handleLogin);
-    fastify.post('/signup', handleSignup);
-    fastify.post('/logout', handleLogout);
-    fastify.get('/check-auth', handleCheckLogin);
+    fastify.post('/login', {
+        schema: {
+            tags: ['auth'],
+            summary: 'Inloggen',
+            description: 'Controleert email, wachtwoord en rol. Bij succes wordt een httpOnly cookie `token` gezet (JWT, 15 minuten geldig).',
+            body: authBodySchema,
+            response: {
+                200: berichtSchema,
+                400: authFoutSchema,
+                401: authFoutSchema,
+                500: authFoutSchema,
+            },
+        },
+    }, handleLogin);
+
+    fastify.post('/signup', {
+        schema: {
+            tags: ['auth'],
+            summary: 'Account aanmaken',
+            description: 'Maakt een nieuwe gebruiker aan met rol student of docent.',
+            body: authBodySchema,
+            response: {
+                201: berichtSchema,
+                400: authFoutSchema,
+                500: authFoutSchema,
+            },
+        },
+    }, handleSignup);
+
+    fastify.post('/logout', {
+        schema: {
+            tags: ['auth'],
+            summary: 'Uitloggen',
+            description: 'Verwijdert de cookie `token`.',
+            response: {
+                200: berichtSchema,
+            },
+        },
+    }, handleLogout);
+
+    fastify.get('/check-auth', {
+        schema: {
+            tags: ['auth'],
+            summary: 'Controleer of de gebruiker is ingelogd',
+            security: [{ cookieAuth: [] }],
+            response: {
+                200: berichtSchema,
+                401: authFoutSchema,
+            },
+        },
+    }, handleCheckLogin);
 }
