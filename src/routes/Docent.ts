@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import {db as postgresDb, db} from "../prisma/db.ts";
 import type {Varchar} from "@prisma/orm-postgres/target/codec-types";
 import type {Student} from "../types/student.ts";
+import {foutSchema, succesSchema, succesGetStudentsSchema, succesUpdateLeeslijstStudentSchema} from "../schemas/docent.ts";
+import {boekSchema} from "../schemas/boeken.ts";
 
 type docentQuery = {
     Querystring: {
@@ -187,6 +189,7 @@ export async function docentRoutes(fastify: FastifyInstance) {
                 message: "Boek succesvol verwijderd uit de leeslijst",
                 boekId: boekId,
                 isBookmarked: false,
+                isRead: false,
             });
         }catch(error){
             return reply.status(500).send({message: "serverfout"});
@@ -194,22 +197,94 @@ export async function docentRoutes(fastify: FastifyInstance) {
     }
 
     fastify.post<docentQuery>('/addDocent',
-        {preHandler: [fastify.authenticate]},
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['docent'],
+                summary: 'Student die linked met een docent',
+                security: [{ cookieAuth: [] }],
+                querystring: {
+                    type: 'object',
+                    properties: {
+                        docentMail: {type: 'string'}
+                    }
+                },
+                response: {
+                    201: succesSchema,
+                    400: foutSchema,
+                    500: foutSchema,
+                }
+            }
+        },
         handleStudentAddDocent
     );
 
     fastify.get('/getStudents',
-        {preHandler: [fastify.authenticate]},
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['docent'],
+                summary: 'Docent haalt alle gelinkte studenten op',
+                security: [{cookieAuth: []}],
+                response: {
+                    200: succesGetStudentsSchema,
+                    400: foutSchema,
+                    500: foutSchema,
+                }
+            }
+        },
         handleStudentGet
     );
 
     fastify.get<docentQuery>("/getBoekenStudent",
-        {preHandler: [fastify.authenticate]},
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['docent'],
+                summary: 'Docent vraagt leeslijst van gekoppelde student op',
+                security: [{cookieAuth: []}],
+                querystring: {
+                    type: 'object',
+                    properties: {
+                        studentId: { type: 'string' },
+                    },
+                },
+                response: {
+                    200: boekSchema,
+                    400: foutSchema,
+                    401: foutSchema,
+                    500: foutSchema,
+                }
+            }
+        },
         handleGetStudentBooks
     );
 
     fastify.post<docentQuery>('/updateStudentLeeslijst',
-        {preHandler: [fastify.authenticate]},
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['docent'],
+                summary: 'Docent update leeslijst van gelinkte student',
+                security: [{cookieAuth: []}],
+                body: {
+                    type: 'object',
+                    required: ['studentId', 'boekId', 'isBookmarked'],
+                    properties: {
+                        studentId: {type: 'string'},
+                        boekId: {type: 'string'},
+                        isBookmarked: {type: 'boolean'},
+                    }
+                },
+                response: {
+                    200: succesUpdateLeeslijstStudentSchema,
+                    201: succesUpdateLeeslijstStudentSchema,
+                    400: foutSchema,
+                    401: foutSchema,
+                    500: foutSchema,
+                }
+            }
+        },
         handleUpdateLeesLijstStudentAsDocent
     );
 }

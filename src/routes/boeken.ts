@@ -163,7 +163,7 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                 tags: ['boeken'],
                 summary: 'Zoek boeken of haal alle boeken op',
                 description: 'Zonder zoekTerm komen alle boeken terug, met zoekTerm maximaal 20 resultaten. Bevat per boek of het in de leeslijst staat en of het gelezen is.',
-                security: [{ bearerAuth: [] }],
+                security: [{ cookieAuth: [] }],
                 querystring: {
                     type: 'object',
                     properties: {
@@ -211,7 +211,7 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                 tags: ['boeken'],
                 summary: 'Persoonlijke boekaanbevelingen (max 3)',
                 description: 'Gebaseerd op het favoriete type materiaal uit het leesprofiel van de ingelogde student.',
-                security: [{ bearerAuth: [] }],
+                security: [{ cookieAuth: [] }],
                 response: {
                     200: boekenLijstSchema,
                     401: foutSchema,
