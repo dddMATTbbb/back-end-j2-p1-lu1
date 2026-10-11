@@ -1,5 +1,6 @@
 import type {FastifyInstance, FastifyRequest, FastifyReply} from "fastify";
 import {db} from "../prisma/db"
+import {berichtSchema} from "../schemas/user.ts";
 
 export async function userRoutes(fastify: FastifyInstance) {
     async function checkRole(request: FastifyRequest, reply: FastifyReply) {
@@ -22,5 +23,27 @@ export async function userRoutes(fastify: FastifyInstance) {
         }
     }
 
-    fastify.get('/checkRole', {preHandler: [fastify.authenticate]}, checkRole);
+    fastify.get(
+        '/checkRole',
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['user'],
+                summary: 'Haal de rol van de ingelogde gebruiker op',
+                description: 'Geeft in message terug of de gebruiker een student of een docent is.',
+                security: [{ cookieAuth: [] }],
+                response: {
+                    200: {
+                        type: 'object',
+                        properties: {
+                            message: { type: 'string', enum: ['student', 'docent'] },
+                        },
+                    },
+                    400: berichtSchema,
+                    500: berichtSchema,
+                },
+            },
+        },
+        checkRole
+    );
 }
