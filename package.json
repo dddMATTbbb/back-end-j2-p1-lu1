@@ -4,11 +4,13 @@
   "type": "module",
   "private": true,
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@prisma/cli-engine": "0.6.1",
     "@types/bun": "latest",
     "@types/node": "^26.5.1",
     "oxlint": "^1.86.0",
-    "prisma": "^8.0.0-rc.17"
+    "prisma": "^8.0.0-rc.17",
+    "vitest": "^5.0.2"
   },
   "peerDependencies": {
     "typescript": "^7"
@@ -19,9 +21,9 @@
     "@fastify/jwt": "^10.2.2",
     "@fastify/mongodb": "^10.0.1",
     "@fastify/postgres": "^6.1.0",
-    "@prisma/orm-postgres": "^8.0.0-rc.12",
     "@fastify/swagger": "^9.9.2",
     "@fastify/swagger-ui": "^6.1.2",
+    "@prisma/orm-postgres": "^8.0.0-rc.12",
     "bcrypt": "^6.0.0",
     "dotenv": "^18.0.3",
     "fastify": "^5.12.1",
@@ -32,6 +34,7 @@
   "scripts": {
     "contract:emit": "prisma contract emit",
     "lint": "oxlint",
-    "lint:fix": "oxlint --fix"
+    "lint:fix": "oxlint --fix",
+    "test:unit": "vitest run"
   }
 }
