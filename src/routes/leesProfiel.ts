@@ -1,19 +1,20 @@
 import type {FastifyInstance, FastifyRequest, FastifyReply} from "fastify";
 import type {LeesProfiel} from "../types/leesprofiel.ts";
 import {db} from "../prisma/db.ts"
+import {berichtSchema, leesProfielBodySchema, leesProfielRijSchema} from "../schemas/leesProfiel.ts";
 
 export async function leesProfielRoutes(fastify: FastifyInstance) {
     async function handleCreateLeesProfiel(request: FastifyRequest<{ Body: LeesProfiel }>, reply: FastifyReply) {
         const userId:string = request.user.id;
         const { leeftijd, gender, leesniveau, favorieteTypeMatariaal } = request.body;
 
-        const result = await db.orm.public.LeesProfiel.where({studentId: userId}).first();
-
-        if (result) {
-            return reply.status(403).send({ message: "Leesprofiel already exist" });
-        }
-
         try {
+            const result = await db.orm.public.LeesProfiel.where({studentId: userId}).first();
+
+            if (result) {
+                return reply.status(403).send({ message: "Leesprofiel already exist" });
+            }
+
             await db.orm.public.LeesProfiel.create({
                 studentId: userId,
                 leeftijd: leeftijd,
@@ -24,7 +25,7 @@ export async function leesProfielRoutes(fastify: FastifyInstance) {
             return reply.status(201).send({ message: "leesprofiel added successfully" });
         } catch (err) {
             fastify.log.error(err);
-            return reply.status(500).send({ error: 'Server fout' });
+            return reply.status(500).send({ message: 'Server fout' });
         }
     }
 
@@ -41,7 +42,7 @@ export async function leesProfielRoutes(fastify: FastifyInstance) {
             }
         }catch(err) {
             fastify.log.error(err);
-            return reply.status(500).send({ error: 'Server fout' });
+            return reply.status(500).send({ message: 'Server fout' });
         }
     }
 
@@ -56,25 +57,82 @@ export async function leesProfielRoutes(fastify: FastifyInstance) {
                 leesniveau: leesniveau,
                 favorieteTypeMatariaal: favorieteTypeMatariaal,
             })
+
+            if (!result) {
+                return reply.status(404).send({ message: 'Leesprofiel does not exist' });
+            }
+
             return reply.status(200).send({result});
         }catch(err) {
             fastify.log.error(err);
-            return reply.status(500).send({ error: 'Server fout' });
+            return reply.status(500).send({ message: 'Server fout' });
         }
     }
 
     fastify.post<{ Body: LeesProfiel }>(
         '/leesProfiel',
-        { preHandler: [fastify.authenticate] },
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['leesProfiel'],
+                summary: 'Maak een leesprofiel aan voor de ingelogde student',
+                security: [{ cookieAuth: [] }],
+                body: leesProfielBodySchema,
+                response: {
+                    201: berichtSchema,
+                    403: berichtSchema,
+                    500: berichtSchema,
+                },
+            },
+        },
         handleCreateLeesProfiel
     );
-    fastify.get('/leesProfiel',
-        {preHandler: [fastify.authenticate]},
+
+    fastify.get(
+        '/leesProfiel',
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['leesProfiel'],
+                summary: 'Haal het leesprofiel van de ingelogde student op',
+                description: 'Bestaat er nog geen leesprofiel, dan komt er alleen een message terug.',
+                security: [{ cookieAuth: [] }],
+                response: {
+                    200: {
+                        type: 'object',
+                        properties: {
+                            message: { type: 'string' },
+                            data: leesProfielRijSchema,
+                        },
+                    },
+                    500: berichtSchema,
+                },
+            },
+        },
         handleCheckLeesProfiel
     );
-    fastify.put<{Body: LeesProfiel}>(
+
+    fastify.put<{ Body: LeesProfiel }>(
         '/leesProfiel',
-        { preHandler: [fastify.authenticate] },
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['leesProfiel'],
+                summary: 'Werk het leesprofiel van de ingelogde student bij',
+                security: [{ cookieAuth: [] }],
+                body: leesProfielBodySchema,
+                response: {
+                    200: {
+                        type: 'object',
+                        properties: {
+                            result: leesProfielRijSchema,
+                        },
+                    },
+                    404: berichtSchema,
+                    500: berichtSchema,
+                },
+            },
+        },
         handleUpdateLeesProfiel
-    )
+    );
 }
