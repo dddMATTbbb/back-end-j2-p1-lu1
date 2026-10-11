@@ -1,12 +1,9 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../prisma/db.ts";
 import { ObjectId } from "mongodb";
+import {leesLijstStatusSchema, boekenLijstSchema, foutSchema, statusRouteSchema} from "../schemas/leesLijst.ts";
 
 type LeesLijstQuery = {
-    Querystring: {
-        boekId?: string;
-        id?: string;
-    };
     Body?: {
         boekId?: string;
         id?: string;
@@ -83,7 +80,7 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
     // POST /leesLijst: Voegt een boek toe aan de leeslijst van de student
     async function handleToggleBoekLeeslijst(request: FastifyRequest<LeesLijstQuery>, reply: FastifyReply) {
         const userId: string = request.user.id;
-        const boekId = request.body?.boekId || request.body?.id || request.query?.boekId || request.query?.id;
+        const boekId = request.body?.boekId
         const explicitIsBookmarked = request.body?.isBookmarked;
 
         if (!boekId) {
@@ -136,7 +133,7 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
     // PATCH & PUT /leesLijst/status: Wijzigt of togglet de gelezen/ongelezen status van een boek
     async function handleUpdateBoekStatus(request: FastifyRequest<LeesLijstQuery>, reply: FastifyReply) {
         const userId: string = request.user.id;
-        const boekId = request.body?.boekId || request.body?.id || request.query?.boekId || request.query?.id;
+        const boekId = request.body?.boekId
         const explicitIsRead = request.body?.isRead;
 
         if (!boekId) {
@@ -180,8 +177,51 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
         }
     }
 
-    fastify.get('/leesLijst', { preHandler: [fastify.authenticate] }, handleGetLeeslijst);
-    fastify.post<LeesLijstQuery>('/leesLijst', { preHandler: [fastify.authenticate] }, handleToggleBoekLeeslijst);
-    fastify.patch<LeesLijstQuery>('/leesLijst/status', { preHandler: [fastify.authenticate] }, handleUpdateBoekStatus);
-    fastify.put<LeesLijstQuery>('/leesLijst/status', { preHandler: [fastify.authenticate] }, handleUpdateBoekStatus);
+    fastify.get('/leesLijst',
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['leesLijst'],
+                summary: 'Haal de leeslijst van de ingelogde student op',
+                security: [{ cookieAuth: [] }],
+                response: {
+                    200: boekenLijstSchema,
+                    401: foutSchema,
+                    500: foutSchema,
+                },
+            },
+        },
+        handleGetLeeslijst
+    );
+
+    fastify.post<LeesLijstQuery>('/leesLijst',
+        {
+            preHandler: [fastify.authenticate],
+            schema: {
+                tags: ['leesLijst'],
+                summary: 'Voeg een boek toe aan of verwijder een boek uit de leeslijst',
+                description: 'Zonder isBookmarked wordt de huidige status omgedraaid.',
+                security: [{ cookieAuth: [] }],
+                body: {
+                    type: 'object',
+                    required: ['boekId'],
+                    properties: {
+                        boekId: { type: 'string' },
+                        isBookmarked: { type: 'boolean' },
+                    },
+                },
+                response: {
+                    200: leesLijstStatusSchema,
+                    201: leesLijstStatusSchema,
+                    400: foutSchema,
+                    401: foutSchema,
+                    500: foutSchema,
+                },
+            },
+        },
+        handleToggleBoekLeeslijst
+    );
+
+    fastify.patch<LeesLijstQuery>('/leesLijst/status', { preHandler: [fastify.authenticate], schema: statusRouteSchema }, handleUpdateBoekStatus);
+    fastify.put<LeesLijstQuery>('/leesLijst/status', { preHandler: [fastify.authenticate], schema: statusRouteSchema }, handleUpdateBoekStatus);
 }
