@@ -21,7 +21,7 @@ async function jwtPluginImpl(fastify: FastifyInstance) {
         try {
             await request.jwtVerify();
         } catch (err) {
-            reply.send(err);
+            return reply.status(401).send({ message: 'wrong credentials' });
         }
     });
 }

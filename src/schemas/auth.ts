@@ -22,3 +22,10 @@ export const authFoutSchema = {
         message: { type: 'string' },
     },
 } as const;
+
+export const nietIngelogdSchema = {
+    type: 'object',
+    properties: {
+        message: { type: 'string' },
+    },
+};
