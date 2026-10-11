@@ -53,7 +53,7 @@ export async function docentRoutes(fastify: FastifyInstance) {
             })
 
             return reply.status(201).send({ message: "Docent gekoppeld" });
-        } catch (error){
+        } catch {
             return reply.status(500).send({message: "serverfout"});
         }
     }
@@ -81,7 +81,7 @@ export async function docentRoutes(fastify: FastifyInstance) {
 
             return reply.status(200).send(students);
 
-        } catch (error){
+        } catch {
             return reply.status(500).send({message: "serverfout"});
         }
     }
@@ -132,7 +132,7 @@ export async function docentRoutes(fastify: FastifyInstance) {
             });
 
             return reply.status(200).send(boeken);
-        }catch (error) {
+        }catch {
             return reply.status(500).send({message: "serverfout"});
         }
     }
@@ -143,7 +143,7 @@ export async function docentRoutes(fastify: FastifyInstance) {
         const boekId: string | undefined = request.body?.boekId;
         const isBookmarked: boolean | undefined = request.body?.isBookmarked;
 
-        if (!studentId || !boekId || !isBookmarked === undefined) {
+        if (!studentId || !boekId || isBookmarked === undefined) {
             fastify.log.info(studentId)
             fastify.log.info(boekId)
             fastify.log.info(isBookmarked)
@@ -191,7 +191,7 @@ export async function docentRoutes(fastify: FastifyInstance) {
                 isBookmarked: false,
                 isRead: false,
             });
-        }catch(error){
+        }catch{
             return reply.status(500).send({message: "serverfout"});
         }
     }

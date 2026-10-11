@@ -20,7 +20,7 @@ async function jwtPluginImpl(fastify: FastifyInstance) {
     fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
         try {
             await request.jwtVerify();
-        } catch (err) {
+        } catch {
             return reply.status(401).send({ message: 'wrong credentials' });
         }
     });
