@@ -7,6 +7,9 @@ type BoekenQuery = {
     Querystring: {
         zoekTerm?: string,
         boekId?: string
+        taalNiveau?: string,
+        genre?: string,
+        onderwerp?: string,
     };
 };
 
@@ -18,7 +21,7 @@ export async function boekenRoutes(fastify: FastifyInstance) {
         request: FastifyRequest<BoekenQuery>,
         reply: FastifyReply
     ) {
-        const { zoekTerm } = request.query;
+        const { zoekTerm, genre, onderwerp, taalNiveau } = request.query;
         const userId = request.user?.id;
 
         try {
@@ -36,15 +39,37 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                 rawBoeken = await boekenCollection.find().toArray();
             } else {
                 try {
-                    rawBoeken = await boekenCollection.aggregate([
+                    const pipeline: any[] = [
                         {
                             $search: {
                                 index: 'default',
-                                text: { query: zoekTerm, path: ['Titel', 'Auteur'], fuzzy: { maxEdits: 1, prefixLength: 2 } },
-                            },
-                        },
-                        { $limit: 20 },
-                    ]).toArray();
+                                text: {
+                                    query: zoekTerm,
+                                    path: ['Titel', 'Auteur'],
+                                    fuzzy: { maxEdits: 1, prefixLength: 2 }
+                                },
+                            }
+                        }
+                    ];
+
+                    const matchConditions: Record<string, any> = {}
+
+                    if (taalNiveau){
+                        matchConditions.Niveau = taalNiveau;
+                    }
+
+                    if (genre){
+                        matchConditions.genre = genre;
+                    }
+
+                    if (Object.keys(matchConditions).length > 0) {
+                        pipeline.push({ $match: matchConditions });
+                    }
+
+                    pipeline.push({ $limit: 20 });
+
+                    rawBoeken = await boekenCollection.aggregate(pipeline).toArray();
+
                 } catch {
                     // Fallback als MongoDB Atlas search index niet geconfigureerd is
                     rawBoeken = await boekenCollection.find({
@@ -168,6 +193,9 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                     type: 'object',
                     properties: {
                         zoekTerm: { type: 'string', description: 'Zoekt op titel en auteur' },
+                        taalNiveau: { type: 'string' },
+                        genre: { type: 'string' },
+                        onderwerp: { type: 'string' },
                     },
                 },
                 response: {
