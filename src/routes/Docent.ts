@@ -3,7 +3,7 @@ import {db as postgresDb, db} from "../prisma/db.ts";
 import type {Varchar} from "@prisma/orm-postgres/target/codec-types";
 import type {Student} from "../types/student.ts";
 import {foutSchema, succesSchema, succesGetStudentsSchema, succesUpdateLeeslijstStudentSchema} from "../schemas/docent.ts";
-import {boekSchema} from "../schemas/boeken.ts";
+import {boekenLijstSchema, boekSchema} from "../schemas/boeken.ts";
 
 type docentQuery = {
     Querystring: {
@@ -68,7 +68,7 @@ export async function docentRoutes(fastify: FastifyInstance) {
         try{
             const studentRows = await db.orm.public.StudentenLijstDocent.where({docentId: docentId}).all();
             if (studentRows.length === 0) {
-                return reply.status(400).send({message: "There are no students"});
+                return reply.status(200).send([]);
             }
 
             const studentIds = studentRows.map(row => row.studentId)
@@ -250,7 +250,7 @@ export async function docentRoutes(fastify: FastifyInstance) {
                     },
                 },
                 response: {
-                    200: boekSchema,
+                    200: boekenLijstSchema,
                     400: foutSchema,
                     401: foutSchema,
                     500: foutSchema,

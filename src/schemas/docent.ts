@@ -13,12 +13,15 @@ export const succesSchema = {
 } as const;
 
 export const succesGetStudentsSchema = {
-    type: 'object',
-    properties: {
-        id: { type: 'string' },
-        email: { type: 'string' }
+    type: 'array',
+    items: {
+        type: 'object',
+        properties: {
+            id: { type: 'string' },
+            email: { type: 'string' }
+        }
     }
-}
+} as const;
 
 export const succesUpdateLeeslijstStudentSchema = {
     type: 'object',
