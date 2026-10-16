@@ -41,6 +41,18 @@ export const boekenLijstSchema = {
     items: boekSchema,
 } as const;
 
+export const paginatedLeesLijstSchema = {
+    type: 'object',
+    properties: {
+        boeken: boekenLijstSchema,
+        total: { type: 'number' },
+        page: { type: 'number' },
+        limit: { type: 'number' },
+        totalPages: { type: 'number' },
+    },
+    required: ['boeken', 'total', 'page', 'limit', 'totalPages'],
+} as const;
+
 export const statusRouteSchema = {
     tags: ['leesLijst'],
     summary: 'Wijzig de gelezen-status van een boek',

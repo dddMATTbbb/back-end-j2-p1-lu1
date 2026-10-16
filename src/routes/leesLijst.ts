@@ -1,7 +1,14 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { db } from "../prisma/db.ts";
 import { ObjectId } from "mongodb";
-import {leesLijstStatusSchema, boekenLijstSchema, foutSchema, statusRouteSchema} from "../schemas/leesLijst.ts";
+import {leesLijstStatusSchema, paginatedLeesLijstSchema, foutSchema, statusRouteSchema} from "../schemas/leesLijst.ts";
+
+type GetLeesLijstQuery = {
+    Querystring: {
+        page?: number | string;
+        limit?: number | string;
+    };
+};
 
 type LeesLijstQuery = {
     Body?: {
@@ -16,9 +23,11 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
     const mongoDb = fastify.mongo.client.db('j1-p1-lu1');
     const boekenCollection = mongoDb.collection('boeken');
 
-    // GET /leesLijst: Haalt alle boeken in de persoonlijke leeslijst van de student op
-    async function handleGetLeeslijst(request: FastifyRequest, reply: FastifyReply) {
+    // GET /leesLijst: Haalt de boeken in de persoonlijke leeslijst van de student gepagineerd op
+    async function handleGetLeeslijst(request: FastifyRequest<GetLeesLijstQuery>, reply: FastifyReply) {
         const userId: string = request.user.id;
+        const page = Math.max(1, Number(request.query?.page) || 1);
+        const limit = Math.max(1, Number(request.query?.limit) || 20);
 
         try {
             // 1. Haal alle rijen op uit PostgreSQL voor de ingelogde student
@@ -34,13 +43,26 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
                 });
             }
 
-            if (boekIds.length === 0) {
-                return reply.status(200).send([]);
+            const total = boekIds.length;
+            const totalPages = Math.ceil(total / limit) || 1;
+
+            if (total === 0) {
+                return reply.status(200).send({
+                    boeken: [],
+                    total: 0,
+                    page,
+                    limit,
+                    totalPages: 1,
+                });
             }
+
+            // Paginering van boekIds
+            const startIndex = (page - 1) * limit;
+            const paginatedBoekIds = boekIds.slice(startIndex, startIndex + limit);
 
             // 2. Haal de bijbehorende boekgegevens op uit MongoDB
             const objectIds: ObjectId[] = [];
-            for (const id of boekIds) {
+            for (const id of paginatedBoekIds) {
                 if (ObjectId.isValid(id)) {
                     objectIds.push(new ObjectId(id));
                 }
@@ -70,7 +92,13 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
                 };
             });
 
-            return reply.status(200).send(result);
+            return reply.status(200).send({
+                boeken: result,
+                total,
+                page,
+                limit,
+                totalPages,
+            });
         } catch (error) {
             fastify.log.error(error);
             return reply.status(500).send({ message: "Serverfout bij het ophalen van de leeslijst" });
@@ -177,15 +205,22 @@ export async function leesLijstRoutes(fastify: FastifyInstance) {
         }
     }
 
-    fastify.get('/leesLijst',
+    fastify.get<GetLeesLijstQuery>('/leesLijst',
         {
             preHandler: [fastify.authenticate],
             schema: {
                 tags: ['leesLijst'],
-                summary: 'Haal de leeslijst van de ingelogde student op',
+                summary: 'Haal de leeslijst van de ingelogde student gepagineerd op',
                 security: [{ cookieAuth: [] }],
+                querystring: {
+                    type: 'object',
+                    properties: {
+                        page: { type: 'integer', minimum: 1, default: 1 },
+                        limit: { type: 'integer', minimum: 1, default: 20 },
+                    },
+                },
                 response: {
-                    200: boekenLijstSchema,
+                    200: paginatedLeesLijstSchema,
                     401: foutSchema,
                     500: foutSchema,
                 },

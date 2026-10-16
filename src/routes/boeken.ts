@@ -1,15 +1,17 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { ObjectId } from "mongodb";
 import {db, db as postgresDb} from "../prisma/db.ts";
-import { boekenLijstSchema, ruwBoekSchema, foutSchema } from '../schemas/boeken.ts';
+import { boekenLijstSchema, paginatedBoekenSchema, ruwBoekSchema, foutSchema } from '../schemas/boeken.ts';
 
 type BoekenQuery = {
     Querystring: {
         zoekTerm?: string,
-        boekId?: string
+        boekId?: string,
         taalNiveau?: string,
         genre?: string,
         onderwerp?: string,
+        page?: number | string,
+        limit?: number | string,
     };
 };
 
@@ -27,6 +29,9 @@ export async function boekenRoutes(fastify: FastifyInstance) {
         reply: FastifyReply
     ) {
         const { zoekTerm, genre, onderwerp, taalNiveau } = request.query;
+        const page = Math.max(1, Number(request.query.page) || 1);
+        const limit = Math.max(1, Number(request.query.limit) || 20);
+        const skip = (page - 1) * limit;
         const userId = request.user?.id;
 
         try {
@@ -64,13 +69,34 @@ export async function boekenRoutes(fastify: FastifyInstance) {
             fastify.log.info(matchConditions['Themas_boek']);
 
             let rawBoeken: any[] = [];
+            let total = 0;
 
             if (!zoekTerm?.trim()) {
-                // SCENARIO 1: Geen zoekterm -> als matchConditions leeg is ({}), haalt hij ALLE boeken op
-                rawBoeken = await boekenCollection.find(matchConditions).toArray();
+                // SCENARIO 1: Geen zoekterm -> als matchConditions leeg is ({}), haalt hij alle boeken gepagineerd op
+                total = await boekenCollection.countDocuments(matchConditions);
+                rawBoeken = await boekenCollection.find(matchConditions).skip(skip).limit(limit).toArray();
             } else {
                 // SCENARIO 2: Wel een zoekterm -> Atlas Search
                 try {
+                    const countPipeline: any[] = [
+                        {
+                            $search: {
+                                index: 'default',
+                                text: {
+                                    query: zoekTerm,
+                                    path: ['Titel', 'Auteur'],
+                                    fuzzy: { maxEdits: 1, prefixLength: 2 }
+                                },
+                            }
+                        }
+                    ];
+                    if (Object.keys(matchConditions).length > 0) {
+                        countPipeline.push({ $match: matchConditions });
+                    }
+                    countPipeline.push({ $count: 'total' });
+                    const countResult = await boekenCollection.aggregate(countPipeline).toArray();
+                    total = countResult[0]?.total ?? 0;
+
                     const pipeline: any[] = [
                         {
                             $search: {
@@ -84,12 +110,12 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                         }
                     ];
 
-                    // Voeg filters toe aan de aggregatie als ze gezet zijn
                     if (Object.keys(matchConditions).length > 0) {
                         pipeline.push({ $match: matchConditions });
                     }
 
-                    pipeline.push({ $limit: 20 });
+                    pipeline.push({ $skip: skip });
+                    pipeline.push({ $limit: limit });
                     rawBoeken = await boekenCollection.aggregate(pipeline).toArray();
 
                 } catch (Err) {
@@ -97,11 +123,12 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                     // FALLBACK: Regex fallback bij indexproblemen
                     const fallbackQuery: Record<string, any> = { ...matchConditions };
                     fallbackQuery.$or = [
-                        { Titel: { $regex: zoekTerm,$options: 'i' } },
-                        { Auteur: { $regex: zoekTerm,$options: 'i' } },
+                        { Titel: { $regex: zoekTerm, $options: 'i' } },
+                        { Auteur: { $regex: zoekTerm, $options: 'i' } },
                     ];
 
-                    rawBoeken = await boekenCollection.find(fallbackQuery).limit(20).toArray();
+                    total = await boekenCollection.countDocuments(fallbackQuery);
+                    rawBoeken = await boekenCollection.find(fallbackQuery).skip(skip).limit(limit).toArray();
                 }
             }
 
@@ -128,7 +155,15 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                 };
             });
 
-            return reply.status(200).send(boeken);
+            const totalPages = Math.ceil(total / limit) || 1;
+
+            return reply.status(200).send({
+                boeken,
+                total,
+                page,
+                limit,
+                totalPages,
+            });
         } catch (err) {
             fastify.log.error(err);
             return reply.status(500).send({ error: 'Database query mislukt' });
@@ -211,8 +246,8 @@ export async function boekenRoutes(fastify: FastifyInstance) {
             preHandler: [fastify.authenticate],
             schema: {
                 tags: ['boeken'],
-                summary: 'Zoek boeken of haal alle boeken op',
-                description: 'Zonder zoekTerm komen alle boeken terug, met zoekTerm maximaal 20 resultaten. Bevat per boek of het in de leeslijst staat en of het gelezen is.',
+                summary: 'Zoek boeken of haal boeken gepagineerd op',
+                description: 'Haalt boeken gepagineerd op met filters en zoekterm. Bevat per boek of het in de leeslijst staat en of het gelezen is.',
                 security: [{ cookieAuth: [] }],
                 querystring: {
                     type: 'object',
@@ -221,10 +256,12 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                         taalNiveau: { type: 'string' },
                         genre: { type: 'string' },
                         onderwerp: { type: 'string' },
+                        page: { type: 'integer', minimum: 1, default: 1 },
+                        limit: { type: 'integer', minimum: 1, default: 20 },
                     },
                 },
                 response: {
-                    200: boekenLijstSchema,
+                    200: paginatedBoekenSchema,
                     401: foutSchema,
                     500: foutSchema,
                 },

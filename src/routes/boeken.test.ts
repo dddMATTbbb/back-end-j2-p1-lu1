@@ -19,13 +19,18 @@ describe('GET /boeken', () => {
             },
         });
 
+        const mockCursor = {
+            skip: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
+            toArray: async () => [
+                { _id: { toString: () => 'boek-1' }, Titel: 'De ontdekking', Auteur: 'A. Schrijver' },
+                { _id: { toString: () => 'boek-2' }, Titel: 'Nieuw boek', Auteur: 'B. Auteur' },
+            ],
+        };
+
         const boekenCollection = {
-            find: vi.fn(() => ({
-                toArray: async () => [
-                    { _id: { toString: () => 'boek-1' }, Titel: 'De ontdekking', Auteur: 'A. Schrijver' },
-                    { _id: { toString: () => 'boek-2' }, Titel: 'Nieuw boek', Auteur: 'B. Auteur' },
-                ],
-            })),
+            countDocuments: vi.fn().mockResolvedValue(2),
+            find: vi.fn(() => mockCursor),
         };
 
         app = Fastify();
@@ -42,11 +47,15 @@ describe('GET /boeken', () => {
 
     it('geeft boeken terug met leeslijststatus en standaardstatus voor een niet-opgeslagen boek', async () => {
         const response = await app.inject({ method: 'GET', url: '/boeken' });
-        const boeken = response.json();
+        const data = response.json();
 
         expect(response.statusCode).toBe(200);
-        expect(boeken[0]).toMatchObject({ id: 'boek-1', titel: 'De ontdekking', isBookmarked: true, isRead: true });
-        expect(boeken[1]).toMatchObject({ id: 'boek-2', isBookmarked: false, isRead: false });
+        expect(data.total).toBe(2);
+        expect(data.page).toBe(1);
+        expect(data.limit).toBe(20);
+        expect(data.totalPages).toBe(1);
+        expect(data.boeken[0]).toMatchObject({ id: 'boek-1', titel: 'De ontdekking', isBookmarked: true, isRead: true });
+        expect(data.boeken[1]).toMatchObject({ id: 'boek-2', isBookmarked: false, isRead: false });
         expect(mocks.leesLijstWhere).toHaveBeenCalledWith({ studentId: 'student-1' });
     });
 });
