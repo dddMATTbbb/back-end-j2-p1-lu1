@@ -25,7 +25,7 @@ export async function boekenRoutes(fastify: FastifyInstance) {
         const userId = request.user?.id;
 
         try {
-            // Haal de bestaande leeslijst status van de ingelogde gebruiker op uit PostgreSQL
+            // 1. Haal de bestaande leeslijst status op uit PostgreSQL
             const userLeesLijst = new Map<string, { isRead: boolean }>();
             if (userId) {
                 for await (const row of postgresDb.orm.public.LeesLijst.where({ studentId: userId }).all()) {
@@ -35,9 +35,17 @@ export async function boekenRoutes(fastify: FastifyInstance) {
 
             let rawBoeken: any[] = [];
 
+            // Bouw de basis filters die voor zowel find als aggregation gelden
+            const matchConditions: Record<string, any> = {};
+            if (taalNiveau) matchConditions.Niveau = taalNiveau;
+            if (genre) matchConditions.genre = genre;
+            if (onderwerp) matchConditions.onderwerp = onderwerp;
+
             if (!zoekTerm?.trim()) {
-                rawBoeken = await boekenCollection.find().toArray();
+                // SCENARIO 1: Geen zoekterm, wel mogelijk filters (zoals taalniveau)
+                rawBoeken = await boekenCollection.find(matchConditions).limit(50).toArray();
             } else {
+                // SCENARIO 2: Wel een zoekterm -> Gebruik Atlas Search
                 try {
                     const pipeline: any[] = [
                         {
@@ -52,16 +60,7 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                         }
                     ];
 
-                    const matchConditions: Record<string, any> = {}
-
-                    if (taalNiveau){
-                        matchConditions.Niveau = taalNiveau;
-                    }
-
-                    if (genre){
-                        matchConditions.genre = genre;
-                    }
-
+                    // Voeg filters toe aan de pipeline als ze zijn ingevuld
                     if (Object.keys(matchConditions).length > 0) {
                         pipeline.push({ $match: matchConditions });
                     }
@@ -70,18 +69,20 @@ export async function boekenRoutes(fastify: FastifyInstance) {
 
                     rawBoeken = await boekenCollection.aggregate(pipeline).toArray();
 
-                } catch {
-                    // Fallback als MongoDB Atlas search index niet geconfigureerd is
-                    rawBoeken = await boekenCollection.find({
-                        $or: [
-                            { Titel: { $regex: zoekTerm, $options: 'i' } },
-                            { Auteur: { $regex: zoekTerm, $options: 'i' } },
-                        ]
-                    }).limit(20).toArray();
+                } catch (searchError) {
+                    // FALLBACK: Als Atlas Search index niet werkt, gebruik regex én behoud de filters!
+                    const fallbackQuery: Record<string, any> = { ...matchConditions };
+                    fallbackQuery.$or = [
+                        { Titel: { $regex: zoekTerm, $options: 'i' } },
+                        { Auteur: { $regex: zoekTerm, $options: 'i' } },
+                    ];
+
+                    rawBoeken = await boekenCollection.find(fallbackQuery).limit(20).toArray();
                 }
                 fastify.log.info({ zoekTerm, aantal: rawBoeken.length }, 'zoekresultaat');
             }
 
+            // 5. Map de resultaten naar het juiste formaat
             const boeken = rawBoeken.map((b) => {
                 const bookId = b._id ? b._id.toString() : (b.id ? b.id.toString() : '');
                 const entry = userLeesLijst.get(bookId);
@@ -95,6 +96,7 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                     Omschrijving: b['Korte omschrijving'] || b.Omschrijving || '',
                     'Korte omschrijving': b['Korte omschrijving'] || b.Omschrijving || '',
                     Niveau: b.Niveau || '',
+                    taalNiveau: b.Niveau || '',
                     Themas: b.Themas_boek || b.Themas || '',
                     Themas_boek: b.Themas_boek || b.Themas || '',
                     'Type materiaal': b['Type materiaal'] || '',
