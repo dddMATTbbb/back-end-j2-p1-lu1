@@ -7,6 +7,9 @@ type BoekenQuery = {
     Querystring: {
         zoekTerm?: string,
         boekId?: string
+        taalNiveau?: string,
+        genre?: string,
+        onderwerp?: string,
     };
 };
 
@@ -14,15 +17,20 @@ export async function boekenRoutes(fastify: FastifyInstance) {
     const mongoDb = fastify.mongo.client.db('j1-p1-lu1');
     const boekenCollection = mongoDb.collection('boeken');
 
+    // Hulpfunctie om speciale regex-tekens veilig te escapen
+    function escapeRegex(text: string) {
+        return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+    }
+
     async function getBooks(
         request: FastifyRequest<BoekenQuery>,
         reply: FastifyReply
     ) {
-        const { zoekTerm } = request.query;
+        const { zoekTerm, genre, onderwerp, taalNiveau } = request.query;
         const userId = request.user?.id;
 
         try {
-            // Haal de bestaande leeslijst status van de ingelogde gebruiker op uit PostgreSQL
+            // 1. Haal de bestaande leeslijst status op uit PostgreSQL
             const userLeesLijst = new Map<string, { isRead: boolean }>();
             if (userId) {
                 for await (const row of postgresDb.orm.public.LeesLijst.where({ studentId: userId }).all()) {
@@ -30,33 +38,74 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                 }
             }
 
+            // 2. Bouw dynamisch de matchConditions op met de juiste MongoDB-veldnamen
+            const matchConditions: Record<string, any> = {};
+
+            if (taalNiveau?.trim()) {
+                matchConditions['Niveau'] = taalNiveau.trim();
+            }
+
+            if (genre?.trim()) {
+                // Exacte match of regex voor Type materiaal (bijv. "Boek")
+                matchConditions['Type materiaal'] = { $regex: `^${escapeRegex(genre.trim())}$`, $options: 'i' };
+            }
+
+            if (onderwerp?.trim()) {
+                // Zoekt naar het onderwerp als losstaand thema tussen puntkomma's (bijv. "oorlog;verlies")
+                const safeOnderwerp = escapeRegex(onderwerp.trim());
+                matchConditions['Themas_boek'] = {
+                    $regex: `(^|;)\\s*${safeOnderwerp}(\\s*;|$)`,
+                    $options: 'i'
+                };
+            }
+
+            fastify.log.info(matchConditions['Niveau']);
+            fastify.log.info(matchConditions['Type materiaal']);
+            fastify.log.info(matchConditions['Themas_boek']);
+
             let rawBoeken: any[] = [];
 
             if (!zoekTerm?.trim()) {
-                rawBoeken = await boekenCollection.find().toArray();
+                // SCENARIO 1: Geen zoekterm -> als matchConditions leeg is ({}), haalt hij ALLE boeken op
+                rawBoeken = await boekenCollection.find(matchConditions).toArray();
             } else {
+                // SCENARIO 2: Wel een zoekterm -> Atlas Search
                 try {
-                    rawBoeken = await boekenCollection.aggregate([
+                    const pipeline: any[] = [
                         {
                             $search: {
                                 index: 'default',
-                                text: { query: zoekTerm, path: ['Titel', 'Auteur'], fuzzy: { maxEdits: 1, prefixLength: 2 } },
-                            },
-                        },
-                        { $limit: 20 },
-                    ]).toArray();
-                } catch {
-                    // Fallback als MongoDB Atlas search index niet geconfigureerd is
-                    rawBoeken = await boekenCollection.find({
-                        $or: [
-                            { Titel: { $regex: zoekTerm, $options: 'i' } },
-                            { Auteur: { $regex: zoekTerm, $options: 'i' } },
-                        ]
-                    }).limit(20).toArray();
+                                text: {
+                                    query: zoekTerm,
+                                    path: ['Titel', 'Auteur'],
+                                    fuzzy: { maxEdits: 1, prefixLength: 2 }
+                                },
+                            }
+                        }
+                    ];
+
+                    // Voeg filters toe aan de aggregatie als ze gezet zijn
+                    if (Object.keys(matchConditions).length > 0) {
+                        pipeline.push({ $match: matchConditions });
+                    }
+
+                    pipeline.push({ $limit: 20 });
+                    rawBoeken = await boekenCollection.aggregate(pipeline).toArray();
+
+                } catch (Err) {
+                    fastify.log.error(Err);
+                    // FALLBACK: Regex fallback bij indexproblemen
+                    const fallbackQuery: Record<string, any> = { ...matchConditions };
+                    fallbackQuery.$or = [
+                        { Titel: { $regex: zoekTerm,$options: 'i' } },
+                        { Auteur: { $regex: zoekTerm,$options: 'i' } },
+                    ];
+
+                    rawBoeken = await boekenCollection.find(fallbackQuery).limit(20).toArray();
                 }
-                fastify.log.info({ zoekTerm, aantal: rawBoeken.length }, 'zoekresultaat');
             }
 
+            // 3. Map de resultaten naar het gewenste formaat
             const boeken = rawBoeken.map((b) => {
                 const bookId = b._id ? b._id.toString() : (b.id ? b.id.toString() : '');
                 const entry = userLeesLijst.get(bookId);
@@ -70,6 +119,7 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                     Omschrijving: b['Korte omschrijving'] || b.Omschrijving || '',
                     'Korte omschrijving': b['Korte omschrijving'] || b.Omschrijving || '',
                     Niveau: b.Niveau || '',
+                    taalNiveau: b.Niveau || '',
                     Themas: b.Themas_boek || b.Themas || '',
                     Themas_boek: b.Themas_boek || b.Themas || '',
                     'Type materiaal': b['Type materiaal'] || '',
@@ -168,6 +218,9 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                     type: 'object',
                     properties: {
                         zoekTerm: { type: 'string', description: 'Zoekt op titel en auteur' },
+                        taalNiveau: { type: 'string' },
+                        genre: { type: 'string' },
+                        onderwerp: { type: 'string' },
                     },
                 },
                 response: {

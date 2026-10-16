@@ -3,7 +3,7 @@ import {db as postgresDb, db} from "../prisma/db.ts";
 import type {Varchar} from "@prisma/orm-postgres/target/codec-types";
 import type {Student} from "../types/student.ts";
 import {foutSchema, succesSchema, succesGetStudentsSchema, succesUpdateLeeslijstStudentSchema} from "../schemas/docent.ts";
-import {boekenLijstSchema, boekSchema} from "../schemas/boeken.ts";
+import {boekenLijstSchema} from "../schemas/boeken.ts";
 
 type docentQuery = {
     Querystring: {
