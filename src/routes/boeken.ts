@@ -17,6 +17,11 @@ export async function boekenRoutes(fastify: FastifyInstance) {
     const mongoDb = fastify.mongo.client.db('j1-p1-lu1');
     const boekenCollection = mongoDb.collection('boeken');
 
+    // Hulpfunctie om speciale regex-tekens veilig te escapen
+    function escapeRegex(text: string) {
+        return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+    }
+
     async function getBooks(
         request: FastifyRequest<BoekenQuery>,
         reply: FastifyReply
@@ -33,19 +38,38 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                 }
             }
 
+            // 2. Bouw dynamisch de matchConditions op met de juiste MongoDB-veldnamen
+            const matchConditions: Record<string, any> = {};
+
+            if (taalNiveau?.trim()) {
+                matchConditions['Niveau'] = taalNiveau.trim();
+            }
+
+            if (genre?.trim()) {
+                // Exacte match of regex voor Type materiaal (bijv. "Boek")
+                matchConditions['Type materiaal'] = { $regex: `^${escapeRegex(genre.trim())}$`, $options: 'i' };
+            }
+
+            if (onderwerp?.trim()) {
+                // Zoekt naar het onderwerp als losstaand thema tussen puntkomma's (bijv. "oorlog;verlies")
+                const safeOnderwerp = escapeRegex(onderwerp.trim());
+                matchConditions['Themas_boek'] = {
+                    $regex: `(^|;)\\s*${safeOnderwerp}(\\s*;|$)`,
+                    $options: 'i'
+                };
+            }
+
+            fastify.log.info(matchConditions['Niveau']);
+            fastify.log.info(matchConditions['Type materiaal']);
+            fastify.log.info(matchConditions['Themas_boek']);
+
             let rawBoeken: any[] = [];
 
-            // Bouw de basis filters die voor zowel find als aggregation gelden
-            const matchConditions: Record<string, any> = {};
-            if (taalNiveau) matchConditions.Niveau = taalNiveau;
-            if (genre) matchConditions.genre = genre;
-            if (onderwerp) matchConditions.onderwerp = onderwerp;
-
             if (!zoekTerm?.trim()) {
-                // SCENARIO 1: Geen zoekterm, wel mogelijk filters (zoals taalniveau)
-                rawBoeken = await boekenCollection.find(matchConditions).limit(50).toArray();
+                // SCENARIO 1: Geen zoekterm -> als matchConditions leeg is ({}), haalt hij ALLE boeken op
+                rawBoeken = await boekenCollection.find(matchConditions).toArray();
             } else {
-                // SCENARIO 2: Wel een zoekterm -> Gebruik Atlas Search
+                // SCENARIO 2: Wel een zoekterm -> Atlas Search
                 try {
                     const pipeline: any[] = [
                         {
@@ -60,29 +84,28 @@ export async function boekenRoutes(fastify: FastifyInstance) {
                         }
                     ];
 
-                    // Voeg filters toe aan de pipeline als ze zijn ingevuld
+                    // Voeg filters toe aan de aggregatie als ze gezet zijn
                     if (Object.keys(matchConditions).length > 0) {
                         pipeline.push({ $match: matchConditions });
                     }
 
                     pipeline.push({ $limit: 20 });
-
                     rawBoeken = await boekenCollection.aggregate(pipeline).toArray();
 
-                } catch (searchError) {
-                    // FALLBACK: Als Atlas Search index niet werkt, gebruik regex én behoud de filters!
+                } catch (Err) {
+                    fastify.log.error(Err);
+                    // FALLBACK: Regex fallback bij indexproblemen
                     const fallbackQuery: Record<string, any> = { ...matchConditions };
                     fallbackQuery.$or = [
-                        { Titel: { $regex: zoekTerm, $options: 'i' } },
-                        { Auteur: { $regex: zoekTerm, $options: 'i' } },
+                        { Titel: { $regex: zoekTerm,$options: 'i' } },
+                        { Auteur: { $regex: zoekTerm,$options: 'i' } },
                     ];
 
                     rawBoeken = await boekenCollection.find(fallbackQuery).limit(20).toArray();
                 }
-                fastify.log.info({ zoekTerm, aantal: rawBoeken.length }, 'zoekresultaat');
             }
 
-            // 5. Map de resultaten naar het juiste formaat
+            // 3. Map de resultaten naar het gewenste formaat
             const boeken = rawBoeken.map((b) => {
                 const bookId = b._id ? b._id.toString() : (b.id ? b.id.toString() : '');
                 const entry = userLeesLijst.get(bookId);
